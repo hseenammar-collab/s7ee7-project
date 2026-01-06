@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(mkdir:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(npm run build:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

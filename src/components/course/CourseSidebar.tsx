@@ -1,0 +1,177 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import {
+  PlayCircle,
+  Clock,
+  BookOpen,
+  Award,
+  Globe,
+  Infinity,
+  CheckCircle,
+  ShoppingCart,
+} from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { formatPrice, formatDuration } from '@/lib/constants'
+import type { Course } from '@/types/database'
+
+interface CourseSidebarProps {
+  course: Course
+}
+
+export default function CourseSidebar({ course }: CourseSidebarProps) {
+  const [isEnrolled, setIsEnrolled] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    const checkEnrollment = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setIsLoading(false)
+        return
+      }
+
+      const { data } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .single()
+
+      setIsEnrolled(!!data)
+      setIsLoading(false)
+    }
+
+    checkEnrollment()
+  }, [course.id, supabase])
+
+  const hasDiscount = course.discount_price_iqd && course.discount_price_iqd < course.price_iqd
+  const discountPercentage = hasDiscount
+    ? Math.round(((course.price_iqd - course.discount_price_iqd!) / course.price_iqd) * 100)
+    : 0
+
+  const features = [
+    { icon: Clock, label: `${formatDuration(course.duration_minutes)} من المحتوى` },
+    { icon: BookOpen, label: `${course.lessons_count} درس` },
+    { icon: Globe, label: course.language || 'العربية' },
+    { icon: Infinity, label: 'وصول مدى الحياة' },
+    { icon: Award, label: 'شهادة إتمام' },
+  ]
+
+  return (
+    <Card className="border-0 shadow-lg sticky top-24">
+      {/* Course Image */}
+      <div className="relative aspect-video">
+        {course.thumbnail_url ? (
+          <Image
+            src={course.thumbnail_url}
+            alt={course.title}
+            fill
+            className="object-cover rounded-t-lg"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-indigo-500/20 flex items-center justify-center rounded-t-lg">
+            <BookOpen className="h-16 w-16 text-primary/50" />
+          </div>
+        )}
+        {/* Preview Button */}
+        {course.preview_video_url && (
+          <button className="absolute inset-0 flex items-center justify-center bg-black/40 hover:bg-black/50 transition-colors group">
+            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <PlayCircle className="h-8 w-8 text-primary" />
+            </div>
+          </button>
+        )}
+      </div>
+
+      <CardContent className="p-6">
+        {/* Price */}
+        <div className="mb-6">
+          {course.price_iqd === 0 ? (
+            <div className="text-3xl font-bold text-green-600">مجاني</div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-bold text-primary">
+                  {formatPrice(hasDiscount ? course.discount_price_iqd! : course.price_iqd)} د.ع
+                </span>
+                {hasDiscount && (
+                  <span className="text-lg text-gray-400 line-through">
+                    {formatPrice(course.price_iqd)} د.ع
+                  </span>
+                )}
+              </div>
+              {hasDiscount && (
+                <div className="mt-1 text-green-600 text-sm font-medium">
+                  وفر {discountPercentage}%
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* CTA Buttons */}
+        {isLoading ? (
+          <div className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+        ) : isEnrolled ? (
+          <Link href={`/my-courses/${course.id}`}>
+            <Button className="w-full h-12 text-lg">
+              <PlayCircle className="ml-2 h-5 w-5" />
+              متابعة التعلم
+            </Button>
+          </Link>
+        ) : (
+          <div className="space-y-3">
+            <Link href={`/courses/${course.slug}/checkout`}>
+              <Button className="w-full h-12 text-lg">
+                <ShoppingCart className="ml-2 h-5 w-5" />
+                {course.price_iqd === 0 ? 'سجل مجاناً' : 'اشتر الآن'}
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        <Separator className="my-6" />
+
+        {/* Features */}
+        <div className="space-y-3">
+          <h4 className="font-semibold">يتضمن الكورس:</h4>
+          {features.map((feature, index) => (
+            <div key={index} className="flex items-center gap-3 text-gray-600">
+              <feature.icon className="h-5 w-5 text-primary" />
+              <span>{feature.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* What You Learn Preview */}
+        {course.what_you_learn && course.what_you_learn.length > 0 && (
+          <>
+            <Separator className="my-6" />
+            <div className="space-y-3">
+              <h4 className="font-semibold">ستتعلم:</h4>
+              {course.what_you_learn.slice(0, 3).map((item, index) => (
+                <div key={index} className="flex items-start gap-2 text-sm text-gray-600">
+                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span>{item}</span>
+                </div>
+              ))}
+              {course.what_you_learn.length > 3 && (
+                <p className="text-sm text-primary">
+                  +{course.what_you_learn.length - 3} المزيد
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}

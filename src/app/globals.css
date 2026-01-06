@@ -1,0 +1,333 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83% 58%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 262 83% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: #0a0a0f !important;
+    color: white !important;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl;
+  }
+
+  /* ============================================
+     SUMERIAN / MESOPOTAMIAN DESIGN SYSTEM
+     Iraqi Identity Theme
+  ============================================ */
+
+  /* Gold Gradient Text - Sumerian Style */
+  .sumerian-gold-text {
+    background: linear-gradient(135deg, #D4AF37, #F5D76E, #D4AF37);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Lapis Blue Gradient Text */
+  .sumerian-lapis-text {
+    background: linear-gradient(135deg, #1E3A5F, #2E5A8F, #1E3A5F);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Ishtar Gate Brick Pattern */
+  .ishtar-pattern {
+    background-image:
+      linear-gradient(90deg, rgba(30, 58, 95, 0.1) 1px, transparent 1px),
+      linear-gradient(rgba(30, 58, 95, 0.1) 1px, transparent 1px);
+    background-size: 20px 10px;
+  }
+
+  /* Ishtar Pattern - Gold Variant */
+  .ishtar-pattern-gold {
+    background-image:
+      linear-gradient(90deg, rgba(212, 175, 55, 0.1) 1px, transparent 1px),
+      linear-gradient(rgba(212, 175, 55, 0.1) 1px, transparent 1px);
+    background-size: 20px 10px;
+  }
+
+  /* Cuneiform Decorative Border */
+  .sumerian-border {
+    border-image: repeating-linear-gradient(
+      90deg,
+      #D4AF37 0px,
+      #D4AF37 10px,
+      transparent 10px,
+      transparent 20px
+    ) 1;
+  }
+
+  /* Gold Border Glow */
+  .sumerian-border-glow {
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    box-shadow:
+      0 0 10px rgba(212, 175, 55, 0.1),
+      inset 0 0 10px rgba(212, 175, 55, 0.05);
+  }
+
+  /* Mesopotamian Card Style */
+  .mesopotamian-card {
+    @apply relative overflow-hidden;
+    background: linear-gradient(145deg, #1A1A2E 0%, #0F0F1A 100%);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+
+  .mesopotamian-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #D4AF37, transparent);
+  }
+
+  /* Ziggurat Divider */
+  .ziggurat-divider {
+    position: relative;
+    height: 40px;
+    background: linear-gradient(180deg, transparent 0%, transparent 40%, #D4AF37 40%, #D4AF37 45%, transparent 45%, transparent 55%, #D4AF37 55%, #D4AF37 60%, transparent 60%);
+    opacity: 0.3;
+  }
+
+  /* Cuneiform Divider */
+  .cuneiform-divider::after {
+    content: "𒀭 𒁹 𒌋 𒁹 𒀭";
+    display: block;
+    text-align: center;
+    letter-spacing: 1rem;
+    color: #D4AF37;
+    opacity: 0.6;
+    font-size: 1.5rem;
+  }
+
+  /* Palm Tree Decoration (CSS Art) */
+  .palm-decoration {
+    position: relative;
+  }
+
+  .palm-decoration::before {
+    content: "🌴";
+    position: absolute;
+    font-size: 3rem;
+    opacity: 0.1;
+  }
+
+  /* Sumerian Gold Button */
+  .btn-sumerian {
+    background: linear-gradient(135deg, #D4AF37, #F5D76E);
+    color: #0F0F1A;
+    font-weight: 600;
+    border: none;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .btn-sumerian::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s ease;
+  }
+
+  .btn-sumerian:hover::before {
+    left: 100%;
+  }
+
+  .btn-sumerian:hover {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+    transform: translateY(-2px);
+  }
+
+  /* Sumerian Lapis Button */
+  .btn-lapis {
+    background: linear-gradient(135deg, #1E3A5F, #2E5A8F);
+    color: #F5F5DC;
+    font-weight: 600;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .btn-lapis:hover {
+    box-shadow: 0 0 20px rgba(30, 58, 95, 0.5);
+    border-color: #D4AF37;
+  }
+
+  /* Lamassu Shadow Effect */
+  .lamassu-shadow {
+    position: relative;
+  }
+
+  .lamassu-shadow::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 20px;
+    background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.2) 0%, transparent 70%);
+  }
+
+  /* Rosette Pattern Background */
+  .rosette-pattern {
+    background-image: radial-gradient(circle at center, rgba(212, 175, 55, 0.1) 0%, transparent 50%);
+    background-size: 60px 60px;
+  }
+
+  /* Ancient Scroll Effect */
+  .ancient-scroll {
+    background: linear-gradient(180deg,
+      rgba(212, 175, 55, 0.05) 0%,
+      transparent 10%,
+      transparent 90%,
+      rgba(212, 175, 55, 0.05) 100%
+    );
+    border-top: 2px solid rgba(212, 175, 55, 0.2);
+    border-bottom: 2px solid rgba(212, 175, 55, 0.2);
+  }
+
+  /* Shimmer Gold Effect */
+  .shimmer-gold {
+    background: linear-gradient(
+      90deg,
+      rgba(212, 175, 55, 0) 0%,
+      rgba(212, 175, 55, 0.3) 50%,
+      rgba(212, 175, 55, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Clay Tablet Card */
+  .clay-tablet {
+    background: linear-gradient(145deg, #2A2A3E 0%, #1A1A2E 100%);
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Stats Badge - Ancient Seal Style */
+  .ancient-seal {
+    @apply inline-flex items-center justify-center;
+    background: linear-gradient(135deg, #D4AF37, #C4A35A);
+    color: #0F0F1A;
+    border-radius: 50%;
+    font-weight: 700;
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+  }
+
+  /* Chevron Pattern (Mesopotamian) */
+  .chevron-pattern {
+    background:
+      linear-gradient(135deg, transparent 25%, rgba(212, 175, 55, 0.05) 25%, rgba(212, 175, 55, 0.05) 50%, transparent 50%, transparent 75%, rgba(212, 175, 55, 0.05) 75%);
+    background-size: 20px 20px;
+  }
+
+  /* Testimonial Card with Ishtar Border */
+  .testimonial-ishtar {
+    position: relative;
+    background: linear-gradient(145deg, #1A1A2E 0%, #0F0F1A 100%);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+  }
+
+  .testimonial-ishtar::before,
+  .testimonial-ishtar::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #D4AF37;
+    opacity: 0.5;
+  }
+
+  .testimonial-ishtar::before {
+    top: -1px;
+    right: -1px;
+    border-left: none;
+    border-bottom: none;
+  }
+
+  .testimonial-ishtar::after {
+    bottom: -1px;
+    left: -1px;
+    border-right: none;
+    border-top: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
