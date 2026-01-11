@@ -319,6 +319,26 @@ function AnimatedCounter({
 // FLOATING CUNEIFORM COMPONENT
 // ============================================
 function FloatingCuneiform() {
+  const [mounted, setMounted] = useState(false)
+  const [positions, setPositions] = useState<Array<{left: number, top: number, delay: number, duration: number}>>([])
+
+  useEffect(() => {
+    setMounted(true)
+    // Generate random positions only on client to avoid hydration mismatch
+    const newPositions = cuneiformChars.map(() => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 10 + Math.random() * 20,
+    }))
+    setPositions(newPositions)
+  }, [])
+
+  // Don't render anything until client-side
+  if (!mounted || positions.length === 0) {
+    return <div className="absolute inset-0 overflow-hidden pointer-events-none" />
+  }
+
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {cuneiformChars.map((char, index) => (
@@ -326,8 +346,8 @@ function FloatingCuneiform() {
           key={index}
           className="absolute text-sumerian-gold/20 text-2xl md:text-4xl font-bold select-none"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
+            left: `${positions[index]?.left || 0}%`,
+            top: `${positions[index]?.top || 0}%`,
           }}
           animate={{
             y: [0, -30, 0],
@@ -335,9 +355,9 @@ function FloatingCuneiform() {
             rotate: [0, 10, 0],
           }}
           transition={{
-            duration: 4 + Math.random() * 2,
+            duration: positions[index]?.duration || 15,
             repeat: Infinity,
-            delay: index * 0.3,
+            delay: positions[index]?.delay || 0,
             ease: 'easeInOut',
           }}
         >
@@ -463,8 +483,8 @@ export default function HomeClient({
 
               {/* Title with Sumerian Gold Gradient */}
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-sumerian-cream leading-tight">
-                أتقن التسويق الرقمي
-                <span className="block mt-2 sumerian-gold-text">وحقق دخل حقيقي</span>
+                تعلم التسويق الرقمي والبرمجة
+                <span className="block mt-2 sumerian-gold-text">بالعربي</span>
               </h1>
 
               {/* Cuneiform Divider */}
@@ -478,6 +498,22 @@ export default function HomeClient({
                 ابدأ رحلتك نحو الحرية المالية اليوم!
               </p>
 
+              {/* Key Stats - 3 نقاط مميزة */}
+              <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+                <div className="flex items-center gap-2 bg-sumerian-gold/10 px-4 py-2 rounded-full">
+                  <BookOpen className="w-5 h-5 text-sumerian-gold" />
+                  <span className="text-sumerian-cream font-semibold">41+ كورس</span>
+                </div>
+                <div className="flex items-center gap-2 bg-sumerian-gold/10 px-4 py-2 rounded-full">
+                  <GraduationCap className="w-5 h-5 text-sumerian-gold" />
+                  <span className="text-sumerian-cream font-semibold">7 تخصصات</span>
+                </div>
+                <div className="flex items-center gap-2 bg-sumerian-gold/10 px-4 py-2 rounded-full">
+                  <Award className="w-5 h-5 text-sumerian-gold" />
+                  <span className="text-sumerian-cream font-semibold">شهادات معتمدة</span>
+                </div>
+              </div>
+
               {/* CTA Buttons - Sumerian Style */}
               <div className="flex flex-wrap justify-center gap-4">
                 <Link href="/courses">
@@ -489,15 +525,16 @@ export default function HomeClient({
                     <ArrowLeft className="mr-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => setShowVideoModal(true)}
-                  className="h-14 px-8 text-lg btn-lapis rounded-xl"
-                >
-                  <Play className="ml-2 h-5 w-5" />
-                  شاهد الفيديو التعريفي
-                </Button>
+                <Link href="/register">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="h-14 px-8 text-lg btn-lapis rounded-xl"
+                  >
+                    <Sparkles className="ml-2 h-5 w-5" />
+                    ابدأ مجاناً
+                  </Button>
+                </Link>
               </div>
 
               {/* Lamassu (Winged Bull) decorative element */}

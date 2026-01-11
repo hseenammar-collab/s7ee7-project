@@ -65,8 +65,6 @@ export default function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const supabase = createClient()
-
   const {
     register: registerProfile,
     handleSubmit: handleSubmitProfile,
@@ -87,6 +85,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
@@ -109,13 +108,14 @@ export default function ProfilePage() {
     }
 
     fetchProfile()
-  }, [router, supabase, resetProfile])
+  }, [router, resetProfile])
 
   const onSubmitProfile = async (data: ProfileFormData) => {
     if (!user) return
     setIsSavingProfile(true)
 
     try {
+      const supabase = createClient()
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -140,6 +140,7 @@ export default function ProfilePage() {
     setIsSavingPassword(true)
 
     try {
+      const supabase = createClient()
       const { error } = await supabase.auth.updateUser({
         password: data.newPassword,
       })
@@ -172,6 +173,7 @@ export default function ProfilePage() {
     setIsUploadingAvatar(true)
 
     try {
+      const supabase = createClient()
       const fileExt = file.name.split('.').pop()
       const fileName = `${user.id}-${Date.now()}.${fileExt}`
       const filePath = `avatars/${fileName}`
@@ -209,6 +211,7 @@ export default function ProfilePage() {
     setIsDeleting(true)
 
     try {
+      const supabase = createClient()
       // Note: Actual account deletion would require a server-side function
       // This is a placeholder for the UI
       await supabase.auth.signOut()

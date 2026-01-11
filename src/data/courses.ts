@@ -10,6 +10,7 @@ export interface Course {
   image: string
   price?: number
   featured?: boolean
+  teachableUrl?: string // رابط الكورس على Teachable
 }
 
 export interface Category {
@@ -53,6 +54,7 @@ export const categories: Category[] = [
 ]
 
 // Courses Data
+// ⚠️ ملاحظة: غيّر روابط teachableUrl بروابط كورساتك الفعلية على Teachable
 export const courses: Course[] = [
   // ==================== CYBERSECURITY ====================
   {
@@ -67,6 +69,7 @@ export const courses: Course[] = [
     image: '/images/courses/nmap.png',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/nmap', // ← غيّر هذا الرابط
   },
   {
     id: 'metasploit',
@@ -80,6 +83,7 @@ export const courses: Course[] = [
     image: '/images/courses/metasploit.jpeg',
     price: 0,
     featured: true,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/metasploit', // ← غيّر هذا الرابط
   },
   {
     id: 'bug-bounty',
@@ -93,6 +97,7 @@ export const courses: Course[] = [
     image: '/images/courses/bug.png',
     price: 0,
     featured: true,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/bug-bounty', // ← غيّر هذا الرابط
   },
   {
     id: 'ethical-hacking',
@@ -106,6 +111,7 @@ export const courses: Course[] = [
     image: '/images/courses/dirb.jpg',
     price: 0,
     featured: true,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/ethical-hacking', // ← غيّر هذا الرابط
   },
   {
     id: 'dark-web',
@@ -119,6 +125,7 @@ export const courses: Course[] = [
     image: '/images/courses/dark-web.jpg',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/dark-web', // ← غيّر هذا الرابط
   },
   {
     id: 'comptia-security-plus',
@@ -132,6 +139,7 @@ export const courses: Course[] = [
     image: '/images/courses/security-plus.png',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/security-plus', // ← غيّر هذا الرابط
   },
   {
     id: 'dark-hacker',
@@ -145,6 +153,7 @@ export const courses: Course[] = [
     image: '/images/courses/darkhacer.jpeg',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/dark-hacker', // ← غيّر هذا الرابط
   },
 
   // ==================== PROGRAMMING ====================
@@ -160,6 +169,7 @@ export const courses: Course[] = [
     image: '/images/courses/python.jpeg',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/python', // ← غيّر هذا الرابط
   },
 
   // ==================== MARKETING ====================
@@ -175,6 +185,7 @@ export const courses: Course[] = [
     image: '/images/courses/snapchat-ads.png',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/snapchat-ads', // ← غيّر هذا الرابط
   },
   {
     id: 'tiktok-ads',
@@ -188,6 +199,7 @@ export const courses: Course[] = [
     image: '/images/courses/tiktok-ads.png',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/tiktok-ads', // ← غيّر هذا الرابط
   },
   {
     id: 'linkedin-ads',
@@ -201,6 +213,7 @@ export const courses: Course[] = [
     image: '/images/courses/linkeedin.png',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/linkedin-ads', // ← غيّر هذا الرابط
   },
   {
     id: 'meta-ads',
@@ -214,6 +227,7 @@ export const courses: Course[] = [
     image: '/images/courses/meta.jpeg',
     price: 0,
     featured: true,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/meta-ads', // ← غيّر هذا الرابط
   },
 
   // ==================== NETWORKING ====================
@@ -229,6 +243,7 @@ export const courses: Course[] = [
     image: '/images/courses/RHCSA.jpeg',
     price: 0,
     featured: false,
+    teachableUrl: 'https://s7s-ads.teachable.com/p/linux-rhcsa', // ← غيّر هذا الرابط
   },
 ]
 

@@ -18,14 +18,14 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
-  const supabase = createClient()
-
   useEffect(() => {
+    const supabase = createClient()
+
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/login')
+        window.location.href = '/login'
         return
       }
 
@@ -43,7 +43,7 @@ export default function DashboardLayout({
     }
 
     getUser()
-  }, [router, supabase])
+  }, [router])
 
   if (isLoading) {
     return (

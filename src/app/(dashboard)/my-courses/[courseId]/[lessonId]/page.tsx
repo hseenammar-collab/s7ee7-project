@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -11,13 +11,19 @@ import {
   ChevronRight,
   ArrowRight,
   Loader2,
+  FileText,
+  Download,
+  Lock,
+  BookOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import VideoPlayer from '@/components/learn/VideoPlayer'
 import type { Course, Section, Lesson, LessonProgress } from '@/types/database'
 
 interface SectionWithLessons extends Section {
@@ -35,17 +41,21 @@ export default function LessonPage() {
   const lessonId = params.lessonId as string
 
   const [course, setCourse] = useState<CourseWithSections | null>(null)
-  const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null)
+  const [currentLesson, setCurrentLesson] = useState<(Lesson & { progress?: LessonProgress }) | null>(null)
   const [expandedSections, setExpandedSections] = useState<string[]>([])
   const [isCompleting, setIsCompleting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [courseProgress, setCourseProgress] = useState(0)
 
   const supabase = createClient()
 
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        router.push('/login')
+        return
+      }
 
       // Verify enrollment
       const { data: enrollment } = await supabase
@@ -56,6 +66,7 @@ export default function LessonPage() {
         .single()
 
       if (!enrollment) {
+        toast.error('يجب أن تكون مسجلاً في الكورس لمشاهدة الدروس')
         router.push('/my-courses')
         return
       }
@@ -100,8 +111,13 @@ export default function LessonPage() {
 
       setCourse({ ...courseData, sections: sectionsWithProgress })
 
+      // Calculate course progress
+      const allLessons = sectionsWithProgress.flatMap((s: SectionWithLessons) => s.lessons)
+      const completedLessons = allLessons.filter((l: any) => l.progress?.is_completed).length
+      setCourseProgress(Math.round((completedLessons / allLessons.length) * 100))
+
       // Find current lesson
-      let foundLesson: Lesson | null = null
+      let foundLesson: (Lesson & { progress?: LessonProgress }) | null = null
       let foundSectionId: string | null = null
       for (const section of sectionsWithProgress) {
         const lesson = section.lessons.find((l: Lesson) => l.id === lessonId)
@@ -151,28 +167,50 @@ export default function LessonPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getAllLessons = () => {
+  const getAllLessons = useCallback(() => {
     if (!course) return []
     return course.sections.flatMap((s) => s.lessons)
-  }
+  }, [course])
 
-  const getCurrentLessonIndex = () => {
+  const getCurrentLessonIndex = useCallback(() => {
     const allLessons = getAllLessons()
     return allLessons.findIndex((l) => l.id === lessonId)
-  }
+  }, [getAllLessons, lessonId])
 
-  const getPrevLesson = () => {
+  const getPrevLesson = useCallback(() => {
     const allLessons = getAllLessons()
     const currentIndex = getCurrentLessonIndex()
     return currentIndex > 0 ? allLessons[currentIndex - 1] : null
-  }
+  }, [getAllLessons, getCurrentLessonIndex])
 
-  const getNextLesson = () => {
+  const getNextLesson = useCallback(() => {
     const allLessons = getAllLessons()
     const currentIndex = getCurrentLessonIndex()
     return currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
-  }
+  }, [getAllLessons, getCurrentLessonIndex])
 
+  // Save video progress
+  const handleVideoProgress = useCallback(async (seconds: number) => {
+    if (!currentLesson) return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase
+      .from('lesson_progress')
+      .upsert({
+        user_id: user.id,
+        lesson_id: lessonId,
+        course_id: courseId,
+        watched_seconds: seconds,
+        total_seconds: currentLesson.duration_seconds,
+        last_watched_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,lesson_id',
+      })
+  }, [supabase, currentLesson, lessonId, courseId])
+
+  // Mark lesson as complete
   const markAsComplete = async () => {
     if (!currentLesson) return
     setIsCompleting(true)
@@ -205,7 +243,10 @@ export default function LessonPage() {
 
       await supabase
         .from('enrollments')
-        .update({ progress_percentage: progressPercentage })
+        .update({
+          progress_percentage: progressPercentage,
+          completed_at: progressPercentage === 100 ? new Date().toISOString() : null,
+        })
         .eq('user_id', user.id)
         .eq('course_id', courseId)
 
@@ -220,18 +261,26 @@ export default function LessonPage() {
         router.push(`/my-courses/${courseId}`)
       }
     } catch (error) {
+      console.error(error)
       toast.error('حدث خطأ، حاول مرة أخرى')
     } finally {
       setIsCompleting(false)
     }
   }
 
+  // Auto-complete on video end
+  const handleVideoComplete = useCallback(async () => {
+    if (!currentLesson?.progress?.is_completed) {
+      await markAsComplete()
+    }
+  }, [currentLesson])
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">جاري تحميل الدرس...</p>
+          <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">جاري تحميل الدرس...</p>
         </div>
       </div>
     )
@@ -241,189 +290,262 @@ export default function LessonPage() {
 
   const prevLesson = getPrevLesson()
   const nextLesson = getNextLesson()
-  const isLessonCompleted = (currentLesson as any).progress?.is_completed
+  const isLessonCompleted = currentLesson.progress?.is_completed
+  const resources = currentLesson.resources as { name: string; url: string }[] | null
 
   return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <Link
-        href={`/my-courses/${courseId}`}
-        className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900"
-      >
-        <ArrowRight className="ml-1 h-4 w-4" />
-        العودة للكورس
-      </Link>
+    <div className="min-h-screen bg-[#0a0a0a]">
+      <div className="container mx-auto px-4 py-6">
+        {/* Back Button & Course Progress */}
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href={`/my-courses/${courseId}`}
+            className="inline-flex items-center text-sm text-gray-400 hover:text-cyan-400 transition-colors"
+          >
+            <ArrowRight className="ml-1 h-4 w-4" />
+            العودة للكورس
+          </Link>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Video Player Placeholder */}
-          <Card className="border-0 shadow-sm overflow-hidden">
-            <div className="relative aspect-video bg-gray-900 flex items-center justify-center">
-              <div className="text-center text-white">
-                <PlayCircle className="h-20 w-20 mx-auto mb-4 opacity-50" />
-                <p className="text-lg opacity-70">مشغل الفيديو</p>
-                <p className="text-sm opacity-50">سيتم ربطه مع Bunny Stream</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-400">تقدم الكورس</span>
+            <div className="w-32">
+              <Progress value={courseProgress} className="h-2 bg-white/10" />
             </div>
-          </Card>
-
-          {/* Lesson Info */}
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div>
-                  <h1 className="text-xl font-bold mb-2">{currentLesson.title}</h1>
-                  <p className="text-sm text-gray-500">
-                    {formatDuration(currentLesson.duration_seconds)}
-                  </p>
-                </div>
-                {isLessonCompleted ? (
-                  <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="text-sm font-medium">مكتمل</span>
-                  </div>
-                ) : (
-                  <Button onClick={markAsComplete} disabled={isCompleting}>
-                    {isCompleting ? (
-                      <>
-                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-                        جاري...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="ml-2 h-4 w-4" />
-                        تم الإكمال
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-
-              {currentLesson.description && (
-                <>
-                  <Separator className="my-4" />
-                  <div>
-                    <h3 className="font-medium mb-2">وصف الدرس</h3>
-                    <p className="text-gray-600 whitespace-pre-line">
-                      {currentLesson.description}
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            {prevLesson ? (
-              <Link href={`/my-courses/${courseId}/${prevLesson.id}`}>
-                <Button variant="outline">
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                  الدرس السابق
-                </Button>
-              </Link>
-            ) : (
-              <div />
-            )}
-
-            {nextLesson ? (
-              <Link href={`/my-courses/${courseId}/${nextLesson.id}`}>
-                <Button>
-                  الدرس التالي
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                </Button>
-              </Link>
-            ) : (
-              <Link href={`/my-courses/${courseId}`}>
-                <Button className="bg-green-600 hover:bg-green-700">
-                  إنهاء الكورس
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                </Button>
-              </Link>
-            )}
+            <span className="text-sm font-medium text-cyan-400">{courseProgress}%</span>
           </div>
         </div>
 
-        {/* Sidebar - Course Content */}
-        <div className="lg:col-span-1">
-          <Card className="border-0 shadow-sm sticky top-20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">{course.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[60vh] overflow-y-auto">
-                {course.sections.map((section, sectionIndex) => (
-                  <div key={section.id}>
-                    {/* Section Header */}
-                    <button
-                      onClick={() => toggleSection(section.id)}
-                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Video Player */}
+            {currentLesson.video_url ? (
+              <VideoPlayer
+                src={currentLesson.video_url}
+                poster={course.thumbnail_url || undefined}
+                title={currentLesson.title}
+                onProgress={handleVideoProgress}
+                onComplete={handleVideoComplete}
+                initialTime={currentLesson.progress?.watched_seconds || 0}
+              />
+            ) : (
+              <Card className="border-0 bg-white/5 overflow-hidden">
+                <div className="relative aspect-video bg-[#111] flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <BookOpen className="h-20 w-20 mx-auto mb-4 text-gray-600" />
+                    <p className="text-lg text-gray-400">هذا الدرس لا يحتوي على فيديو</p>
+                    <p className="text-sm text-gray-500">راجع المحتوى النصي أدناه</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Lesson Info */}
+            <Card className="border-0 bg-white/5">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h1 className="text-xl font-bold text-white mb-2">{currentLesson.title}</h1>
+                    <p className="text-sm text-gray-400">
+                      {formatDuration(currentLesson.duration_seconds)} دقيقة
+                    </p>
+                  </div>
+                  {isLessonCompleted ? (
+                    <div className="flex items-center gap-2 text-green-400 bg-green-500/10 px-3 py-1.5 rounded-full">
+                      <CheckCircle className="h-5 w-5" />
+                      <span className="text-sm font-medium">مكتمل</span>
+                    </div>
+                  ) : (
+                    <Button
+                      onClick={markAsComplete}
+                      disabled={isCompleting}
+                      className="bg-cyan-500 hover:bg-cyan-600"
                     >
-                      <div className="flex items-center gap-3 text-right">
-                        <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
-                          {sectionIndex + 1}
-                        </span>
-                        <h4 className="font-medium text-sm">{section.title}</h4>
+                      {isCompleting ? (
+                        <>
+                          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                          جاري...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="ml-2 h-4 w-4" />
+                          تم الإكمال
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+
+                {currentLesson.description && (
+                  <>
+                    <Separator className="my-4 bg-white/10" />
+                    <div>
+                      <h3 className="font-medium text-white mb-2">وصف الدرس</h3>
+                      <p className="text-gray-400 whitespace-pre-line leading-relaxed">
+                        {currentLesson.description}
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Resources */}
+                {resources && resources.length > 0 && (
+                  <>
+                    <Separator className="my-4 bg-white/10" />
+                    <div>
+                      <h3 className="font-medium text-white mb-3 flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-cyan-400" />
+                        الملفات المرفقة
+                      </h3>
+                      <div className="space-y-2">
+                        {resources.map((resource, index) => (
+                          <a
+                            key={index}
+                            href={resource.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors group"
+                          >
+                            <span className="text-gray-300">{resource.name}</span>
+                            <Download className="h-4 w-4 text-gray-500 group-hover:text-cyan-400 transition-colors" />
+                          </a>
+                        ))}
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          'h-5 w-5 text-gray-400 transition-transform',
-                          expandedSections.includes(section.id) && 'rotate-180'
-                        )}
-                      />
-                    </button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
 
-                    {/* Section Lessons */}
-                    {expandedSections.includes(section.id) && (
-                      <div className="bg-gray-50 px-4 pb-2">
-                        {section.lessons.map((lesson) => {
-                          const isCurrentLesson = lesson.id === lessonId
-                          const isCompleted = (lesson as any).progress?.is_completed
+            {/* Navigation */}
+            <div className="flex items-center justify-between">
+              {prevLesson ? (
+                <Link href={`/my-courses/${courseId}/${prevLesson.id}`}>
+                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                    الدرس السابق
+                  </Button>
+                </Link>
+              ) : (
+                <div />
+              )}
 
-                          return (
-                            <Link
-                              key={lesson.id}
-                              href={`/my-courses/${courseId}/${lesson.id}`}
-                              className={cn(
-                                'flex items-center gap-3 p-3 rounded-lg transition-colors',
-                                isCurrentLesson
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'hover:bg-white',
-                                isCompleted && !isCurrentLesson && 'opacity-70'
-                              )}
-                            >
-                              {isCompleted ? (
-                                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                              ) : isCurrentLesson ? (
-                                <PlayCircle className="h-5 w-5 text-primary flex-shrink-0" />
-                              ) : (
-                                <PlayCircle className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p
+              {nextLesson ? (
+                <Link href={`/my-courses/${courseId}/${nextLesson.id}`}>
+                  <Button className="bg-cyan-500 hover:bg-cyan-600">
+                    الدرس التالي
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href={`/my-courses/${courseId}`}>
+                  <Button className="bg-green-500 hover:bg-green-600">
+                    إنهاء الكورس
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar - Course Content */}
+          <div className="lg:col-span-1">
+            <Card className="border-0 bg-white/5 sticky top-20">
+              <CardHeader className="pb-3 border-b border-white/10">
+                <CardTitle className="text-lg text-white">{course.title}</CardTitle>
+                <p className="text-sm text-gray-400">
+                  {getCurrentLessonIndex() + 1} / {getAllLessons().length} درس
+                </p>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[60vh] overflow-y-auto">
+                  {course.sections.map((section, sectionIndex) => {
+                    const sectionLessons = section.lessons
+                    const completedInSection = sectionLessons.filter((l: any) => l.progress?.is_completed).length
+
+                    return (
+                      <div key={section.id}>
+                        {/* Section Header */}
+                        <button
+                          onClick={() => toggleSection(section.id)}
+                          className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 text-right">
+                            <span className="w-7 h-7 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center text-xs font-medium">
+                              {sectionIndex + 1}
+                            </span>
+                            <div>
+                              <h4 className="font-medium text-sm text-white">{section.title}</h4>
+                              <p className="text-xs text-gray-500">
+                                {completedInSection}/{sectionLessons.length} مكتمل
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronDown
+                            className={cn(
+                              'h-5 w-5 text-gray-400 transition-transform',
+                              expandedSections.includes(section.id) && 'rotate-180'
+                            )}
+                          />
+                        </button>
+
+                        {/* Section Lessons */}
+                        {expandedSections.includes(section.id) && (
+                          <div className="bg-white/5 px-4 pb-2">
+                            {section.lessons.map((lesson) => {
+                              const isCurrentLesson = lesson.id === lessonId
+                              const isCompleted = lesson.progress?.is_completed
+
+                              return (
+                                <Link
+                                  key={lesson.id}
+                                  href={`/my-courses/${courseId}/${lesson.id}`}
                                   className={cn(
-                                    'text-sm truncate',
-                                    isCurrentLesson && 'font-medium'
+                                    'flex items-center gap-3 p-3 rounded-lg transition-colors',
+                                    isCurrentLesson
+                                      ? 'bg-cyan-500/20 text-cyan-400'
+                                      : 'hover:bg-white/5',
+                                    isCompleted && !isCurrentLesson && 'opacity-70'
                                   )}
                                 >
-                                  {lesson.title}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {formatDuration(lesson.duration_seconds)}
-                                </p>
-                              </div>
-                            </Link>
-                          )
-                        })}
+                                  {isCompleted ? (
+                                    <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                                  ) : isCurrentLesson ? (
+                                    <PlayCircle className="h-5 w-5 text-cyan-400 flex-shrink-0" />
+                                  ) : (
+                                    <PlayCircle className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p
+                                      className={cn(
+                                        'text-sm truncate',
+                                        isCurrentLesson ? 'font-medium text-cyan-400' : 'text-gray-300'
+                                      )}
+                                    >
+                                      {lesson.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {formatDuration(lesson.duration_seconds)}
+                                    </p>
+                                  </div>
+                                  {lesson.is_free && (
+                                    <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded">
+                                      مجاني
+                                    </span>
+                                  )}
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        )}
+                        <Separator className="bg-white/5" />
                       </div>
-                    )}
-                    <Separator />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
   ArrowRight,
   X,
   Loader2,
+  Tag,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,7 +22,16 @@ import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { paymentMethods, getEnabledPaymentMethods } from '@/lib/payment-methods'
+import CouponInput from '@/components/checkout/CouponInput'
 import type { Course, Payment } from '@/types/database'
+
+interface CouponData {
+  id: string
+  code: string
+  discount_type: 'percentage' | 'fixed'
+  discount_value: number
+  description?: string
+}
 
 interface Props {
   course: Course
@@ -48,6 +58,24 @@ export default function CheckoutClient({
   const [step, setStep] = useState<'select' | 'details' | 'upload'>(
     pendingPayment ? 'upload' : 'select'
   )
+
+  // Coupon state
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponData | null>(null)
+  const [finalPrice, setFinalPrice] = useState(course.discount_price_iqd || course.price_iqd)
+  const originalPrice = course.discount_price_iqd || course.price_iqd
+
+  const handleCouponApply = (coupon: CouponData | null, newPrice: number) => {
+    setAppliedCoupon(coupon)
+    setFinalPrice(newPrice)
+  }
+
+  const calculateDiscountAmount = () => {
+    if (!appliedCoupon) return 0
+    if (appliedCoupon.discount_type === 'percentage') {
+      return Math.round(originalPrice * (appliedCoupon.discount_value / 100))
+    }
+    return Math.min(appliedCoupon.discount_value, originalPrice)
+  }
 
   const selectedPaymentMethod = paymentMethods.find(
     (m) => m.id === selectedMethod
@@ -122,20 +150,26 @@ export default function CheckoutClient({
           .from('payments')
           .update({
             receipt_url: receiptUrl,
-            updated_at: new Date().toISOString(),
           })
           .eq('id', pendingPayment.id)
 
         if (error) throw error
       } else {
-        // Create new payment
+        // Create new payment with coupon info
+        const discountAmount = calculateDiscountAmount()
         const { error, data: newPayment } = await supabase.from('payments').insert({
           user_id: userId,
           course_id: course.id,
-          amount: course.price_iqd,
+          amount_iqd: finalPrice,
+          original_amount_iqd: originalPrice,
+          discount_amount_iqd: discountAmount,
+          coupon_id: appliedCoupon?.id || null,
           payment_method: selectedMethod,
           receipt_url: receiptUrl,
           status: 'pending',
+          metadata: {
+            coupon_code: appliedCoupon?.code || null,
+          },
         }).select().single()
 
         if (error) throw error
@@ -373,10 +407,24 @@ export default function CheckoutClient({
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-2 space-y-6"
           >
+            {/* Coupon Section */}
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Tag className="h-6 w-6 text-cyan-400" />
+                هل لديك كود خصم؟
+              </h2>
+              <CouponInput
+                courseId={course.id}
+                userId={userId}
+                originalPrice={originalPrice}
+                onApplyCoupon={handleCouponApply}
+              />
+            </div>
+
             {/* Step 1: Select Payment Method */}
             <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-sm">
+                <span className="w-8 h-8 bg-cyan-500 rounded-full flex items-center justify-center text-sm">
                   1
                 </span>
                 اختر طريقة الدفع
@@ -477,11 +525,11 @@ export default function CheckoutClient({
                           size="sm"
                           onClick={() =>
                             copyToClipboard(
-                              course.price_iqd.toString(),
+                              finalPrice.toString(),
                               'amount'
                             )
                           }
-                          className="text-purple-400 hover:text-purple-300"
+                          className="text-cyan-400 hover:text-cyan-300"
                         >
                           {copiedField === 'amount' ? (
                             <Check className="h-4 w-4" />
@@ -491,9 +539,14 @@ export default function CheckoutClient({
                           <span className="mr-1">نسخ</span>
                         </Button>
                       </div>
-                      <div className="text-2xl font-bold text-purple-400">
-                        {formatPrice(course.price_iqd)} د.ع
+                      <div className="text-2xl font-bold text-cyan-400">
+                        {formatPrice(finalPrice)} د.ع
                       </div>
+                      {appliedCoupon && (
+                        <p className="text-sm text-green-400 mt-1">
+                          بعد خصم الكوبون
+                        </p>
+                      )}
                     </div>
 
                     {/* Instructions */}
@@ -636,22 +689,34 @@ export default function CheckoutClient({
                 {course.discount_price_iqd &&
                   course.discount_price_iqd < course.price_iqd && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">الخصم</span>
+                      <span className="text-gray-400">خصم الكورس</span>
                       <span className="text-green-400">
-                        -
-                        {formatPrice(
-                          course.price_iqd - course.discount_price_iqd
-                        )}{' '}
-                        د.ع
+                        -{formatPrice(course.price_iqd - course.discount_price_iqd)} د.ع
                       </span>
                     </div>
                   )}
+                {appliedCoupon && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      كوبون ({appliedCoupon.code})
+                    </span>
+                    <span className="text-green-400">
+                      -{formatPrice(calculateDiscountAmount())} د.ع
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-lg font-bold border-t border-white/10 pt-3">
                   <span className="text-white">المجموع</span>
-                  <span className="text-purple-400">
-                    {formatPrice(course.price_iqd)} د.ع
+                  <span className="text-cyan-400">
+                    {formatPrice(finalPrice)} د.ع
                   </span>
                 </div>
+                {appliedCoupon && (
+                  <p className="text-xs text-green-400 text-center">
+                    وفرت {formatPrice(originalPrice - finalPrice)} د.ع!
+                  </p>
+                )}
               </div>
 
               {/* Features */}

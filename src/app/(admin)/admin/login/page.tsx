@@ -2,195 +2,210 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Loader2, Shield, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Loader2, Shield, Lock, Mail, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
-const adminLoginSchema = z.object({
-  email: z.string().email('الإيميل غير صحيح'),
-  password: z.string().min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
+const loginSchema = z.object({
+  email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
+  password: z.string().min(1, 'كلمة المرور مطلوبة').min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
 })
 
-type AdminLoginFormData = z.infer<typeof adminLoginSchema>
+type LoginFormData = z.infer<typeof loginSchema>
 
 export default function AdminLoginPage() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const supabase = createClient()
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<AdminLoginFormData>({
-    resolver: zodResolver(adminLoginSchema),
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   })
 
-  const onSubmit = async (data: AdminLoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
-    setError(null)
 
     try {
-      // محاولة تسجيل الدخول
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
+      const supabase = createClient()
+      
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
         password: data.password,
       })
 
-      if (authError) {
-        if (authError.message.includes('Invalid login')) {
-          setError('الإيميل أو كلمة المرور غير صحيحة')
-        } else {
-          setError(authError.message)
+      if (error) {
+        toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
+        setIsLoading(false)
+        return
+      }
+
+      if (authData.user) {
+        // Check if user is admin
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', authData.user.id)
+          .single()
+
+        if (!profile || profile.role !== 'admin') {
+          await supabase.auth.signOut()
+          toast.error('ليس لديك صلاحيات الوصول للوحة التحكم')
+          setIsLoading(false)
+          return
         }
-        return
+
+        toast.success('مرحباً بك في لوحة التحكم!')
+        
+        setTimeout(() => {
+          window.location.href = '/admin'
+        }, 500)
       }
-
-      if (!authData.user) {
-        setError('حدث خطأ في تسجيل الدخول')
-        return
-      }
-
-      // التحقق من صلاحيات الأدمن
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', authData.user.id)
-        .single()
-
-      if (profileError || !profileData) {
-        // تسجيل الخروج لأن المستخدم ليس لديه ملف شخصي
-        await supabase.auth.signOut()
-        setError('لا يمكن الوصول إلى معلومات الحساب')
-        return
-      }
-
-      if (profileData.role !== 'admin') {
-        // تسجيل الخروج لأن المستخدم ليس أدمن
-        await supabase.auth.signOut()
-        setError('ليس لديك صلاحيات الأدمن. هذه الصفحة مخصصة للمشرفين فقط.')
-        return
-      }
-
-      // نجاح - المستخدم أدمن
-      toast.success('مرحباً بك في لوحة التحكم!')
-      router.push('/admin')
-      router.refresh()
-    } catch (err) {
-      setError('حدث خطأ غير متوقع، حاول مرة أخرى')
-    } finally {
+    } catch (error) {
+      toast.error('حدث خطأ غير متوقع')
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sumerian-dark via-[#0a0a0a] to-sumerian-clay flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 ishtar-pattern opacity-5" />
+    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4" dir="rtl">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
+      </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Admin Badge */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-sumerian-gold/20 border border-sumerian-gold/30 rounded-full p-4">
-            <Shield className="w-12 h-12 text-sumerian-gold" />
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-2xl font-black text-white">S7EE7</span>
+          </Link>
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-full mb-6">
+            <Shield className="w-4 h-4" />
+            <span className="text-sm font-medium">لوحة التحكم</span>
           </div>
+          
+          <h1 className="text-2xl font-bold text-white mb-2">تسجيل دخول المدير</h1>
+          <p className="text-gray-400">أدخل بياناتك للوصول للوحة التحكم</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-white mb-2">لوحة تحكم الأدمن</h1>
-            <p className="text-gray-400">سجل دخولك للوصول للوحة التحكم</p>
-          </div>
-
-          {/* Error Alert */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            {/* Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-300">البريد الإلكتروني</Label>
-              <Input
-                id="email"
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Email */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              البريد الإلكتروني
+            </label>
+            <div className="relative">
+              <input
                 type="email"
+                autoComplete="email"
                 placeholder="admin@s7ee7.com"
-                className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-sumerian-gold"
+                disabled={isLoading}
+                className={`
+                  w-full h-12 px-4 pr-11
+                  bg-white/5 border rounded-xl
+                  text-white placeholder-gray-500
+                  transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
+                  disabled:opacity-50
+                  ${errors.email ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
+                `}
+                dir="ltr"
                 {...register('email')}
               />
-              {errors.email && (
-                <p className="text-sm text-red-400">{errors.email.message}</p>
-              )}
+              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             </div>
+            {errors.email && (
+              <p className="text-sm text-red-400">{errors.email.message}</p>
+            )}
+          </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-300">كلمة المرور</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-sumerian-gold pl-10"
-                  {...register('password')}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-sm text-red-400">{errors.password.message}</p>
-              )}
+          {/* Password */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              كلمة المرور
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                disabled={isLoading}
+                className={`
+                  w-full h-12 px-4 pr-11 pl-11
+                  bg-white/5 border rounded-xl
+                  text-white placeholder-gray-500
+                  transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
+                  disabled:opacity-50
+                  ${errors.password ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
+                `}
+                dir="ltr"
+                {...register('password')}
+              />
+              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
+            {errors.password && (
+              <p className="text-sm text-red-400">{errors.password.message}</p>
+            )}
+          </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full h-12 text-base bg-sumerian-gold hover:bg-sumerian-gold/90 text-sumerian-dark font-semibold"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="ml-2 h-5 w-5 animate-spin" />
-                  جاري التحقق...
-                </>
-              ) : (
-                <>
-                  <Shield className="ml-2 h-5 w-5" />
-                  دخول كأدمن
-                </>
-              )}
-            </Button>
-          </form>
+          {/* Submit */}
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="
+              w-full h-12 
+              bg-gradient-to-l from-purple-500 to-purple-600 
+              hover:from-purple-400 hover:to-purple-500
+              text-white font-bold text-base
+              rounded-xl
+              transition-all duration-200
+              disabled:opacity-50
+              flex items-center justify-center gap-2
+              shadow-lg shadow-purple-500/20
+            "
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>جاري التحقق...</span>
+              </>
+            ) : (
+              <>
+                <Shield className="w-5 h-5" />
+                <span>دخول لوحة التحكم</span>
+              </>
+            )}
+          </button>
+        </form>
 
-          {/* Footer Note */}
-          <p className="text-center text-gray-500 text-sm mt-6">
-            هذه الصفحة مخصصة للمشرفين فقط
-          </p>
-        </div>
-
-        {/* Brand */}
-        <div className="text-center mt-6">
-          <p className="text-gray-600 text-sm">S7EE7 Academy © 2024</p>
-        </div>
+        {/* Back to site */}
+        <p className="text-center text-gray-500 mt-8">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+            العودة للموقع الرئيسي
+          </Link>
+        </p>
       </div>
     </div>
   )

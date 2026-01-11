@@ -16,6 +16,7 @@ import {
   Globe,
   Award,
   Infinity,
+  ExternalLink,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
@@ -322,6 +323,33 @@ export default async function CourseDetailPage({ params }: PageProps) {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-12">
+              {/* Certificate Badge */}
+              {course.certificate_url && (
+                <div className="bg-gradient-to-r from-cyan-500/20 to-amber-500/20 rounded-2xl p-6 border border-cyan-500/30">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Award className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-400 mb-1">شهادة معترف بها من</p>
+                      <p className="text-xl font-bold text-white">{course.certificate_provider}</p>
+                      {course.certificate_name && (
+                        <p className="text-gray-300 text-sm">{course.certificate_name}</p>
+                      )}
+                    </div>
+                    <a
+                      href={course.certificate_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-5 py-2.5 bg-cyan-500 text-black rounded-xl font-medium hover:bg-cyan-400 transition flex items-center gap-2 flex-shrink-0"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      عرض الشهادة
+                    </a>
+                  </div>
+                </div>
+              )}
+
               {/* What You'll Learn */}
               {course.what_you_learn && course.what_you_learn.length > 0 && (
                 <div className="bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-white/10 rounded-2xl p-6 md:p-8">

@@ -13,6 +13,7 @@ import {
   CheckCircle,
   ShoppingCart,
   Play,
+  ExternalLink,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,7 @@ import { formatPrice, formatDuration } from '@/lib/constants'
 import type { Course } from '@/types/database'
 
 interface CourseSidebarDarkProps {
-  course: Course
+  course: Course & { teachable_url?: string }
 }
 
 export default function CourseSidebarDark({ course }: CourseSidebarDarkProps) {
@@ -136,13 +137,30 @@ export default function CourseSidebarDark({ course }: CourseSidebarDarkProps) {
         {isLoading ? (
           <div className="h-12 bg-white/10 rounded-xl animate-pulse" />
         ) : isEnrolled ? (
-          <Link href={`/my-courses/${course.id}`}>
-            <Button className="w-full h-12 text-lg bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white border-0">
-              <PlayCircle className="ml-2 h-5 w-5" />
-              متابعة التعلم
-            </Button>
-          </Link>
+          // المستخدم مسجل - يعرض زر "ابدأ التعلم" الذي يفتح Teachable
+          course.teachable_url ? (
+            <a
+              href={course.teachable_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Button className="w-full h-12 text-lg bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-0">
+                <PlayCircle className="ml-2 h-5 w-5" />
+                ابدأ التعلم
+                <ExternalLink className="mr-2 h-4 w-4" />
+              </Button>
+            </a>
+          ) : (
+            <Link href={`/my-courses/${course.id}`}>
+              <Button className="w-full h-12 text-lg bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white border-0">
+                <PlayCircle className="ml-2 h-5 w-5" />
+                متابعة التعلم
+              </Button>
+            </Link>
+          )
         ) : (
+          // المستخدم غير مسجل - يعرض زر الشراء
           <div className="space-y-3">
             <Link href={`/courses/${course.slug}/checkout`}>
               <Button className="w-full h-12 text-lg bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white border-0">

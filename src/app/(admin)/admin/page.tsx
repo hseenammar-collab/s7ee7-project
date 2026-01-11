@@ -1,288 +1,203 @@
+// src/app/(admin)/admin/login/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import {
-  DollarSign,
-  Users,
-  ShoppingCart,
-  BookOpen,
-  ArrowUpRight,
-  Eye,
-} from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import StatsCard from '@/components/admin/StatsCard'
-import { formatPrice } from '@/lib/constants'
-import type { Payment, Profile, Course } from '@/types/database'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Eye, EyeOff, Loader2, Shield, Lock, Mail, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 
-interface PaymentWithDetails extends Payment {
-  user: Pick<Profile, 'full_name' | 'avatar_url'>
-  course: Pick<Course, 'title'>
-}
+const loginSchema = z.object({
+  email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
+  password: z.string().min(1, 'كلمة المرور مطلوبة').min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
+})
 
-interface Stats {
-  totalRevenue: number
-  totalStudents: number
-  totalOrders: number
-  totalCourses: number
-}
+type LoginFormData = z.infer<typeof loginSchema>
 
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats>({
-    totalRevenue: 0,
-    totalStudents: 0,
-    totalOrders: 0,
-    totalCourses: 0,
+export default function AdminLoginPage() {
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   })
-  const [recentPayments, setRecentPayments] = useState<PaymentWithDetails[]>([])
-  const [recentUsers, setRecentUsers] = useState<Profile[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const supabase = createClient()
+  const onSubmit = async (data: LoginFormData) => {
+    setIsLoading(true)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Fetch stats
-      const [
-        { data: payments },
-        { count: studentsCount },
-        { count: ordersCount },
-        { count: coursesCount },
-      ] = await Promise.all([
-        supabase
-          .from('payments')
-          .select('amount_iqd')
-          .eq('status', 'completed'),
-        supabase
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'student'),
-        supabase
-          .from('payments')
-          .select('*', { count: 'exact', head: true }),
-        supabase
-          .from('courses')
-          .select('*', { count: 'exact', head: true }),
-      ])
-
-      const totalRevenue = payments?.reduce((sum, p) => sum + p.amount_iqd, 0) || 0
-
-      setStats({
-        totalRevenue,
-        totalStudents: studentsCount || 0,
-        totalOrders: ordersCount || 0,
-        totalCourses: coursesCount || 0,
+    try {
+      // Use API route for proper cookie handling
+      const response = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+        }),
       })
 
-      // Fetch recent payments
-      const { data: recentPaymentsData } = await supabase
-        .from('payments')
-        .select(`
-          *,
-          user:profiles(full_name, avatar_url),
-          course:courses(title)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5)
+      const result = await response.json()
 
-      setRecentPayments((recentPaymentsData || []) as PaymentWithDetails[])
+      if (!response.ok) {
+        toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
+        setIsLoading(false)
+        return
+      }
 
-      // Fetch recent users
-      const { data: recentUsersData } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5)
+      toast.success('مرحباً بك في لوحة التحكم!')
+      
+      // Redirect to admin dashboard
+      setTimeout(() => {
+        window.location.href = '/admin'
+      }, 300)
 
-      setRecentUsers(recentUsersData || [])
+    } catch (error) {
+      toast.error('حدث خطأ غير متوقع')
       setIsLoading(false)
     }
-
-    fetchData()
-  }, [supabase])
-
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      completed: 'bg-green-100 text-green-700',
-      pending: 'bg-yellow-100 text-yellow-700',
-      processing: 'bg-blue-100 text-blue-700',
-      failed: 'bg-red-100 text-red-700',
-      cancelled: 'bg-gray-100 text-gray-700',
-    }
-    const labels: Record<string, string> = {
-      completed: 'مكتمل',
-      pending: 'معلق',
-      processing: 'قيد المعالجة',
-      failed: 'فشل',
-      cancelled: 'ملغي',
-    }
-    return (
-      <Badge className={styles[status] || styles.pending}>
-        {labels[status] || status}
-      </Badge>
-    )
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-IQ', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-28 bg-white rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </div>
-    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold">لوحة التحكم</h1>
-        <p className="text-gray-500">نظرة عامة على أداء المنصة</p>
+    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4" dir="rtl">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="إجمالي الإيرادات"
-          value={`${formatPrice(stats.totalRevenue)} د.ع`}
-          icon={DollarSign}
-          color="green"
-        />
-        <StatsCard
-          title="الطلاب"
-          value={stats.totalStudents}
-          icon={Users}
-          color="blue"
-        />
-        <StatsCard
-          title="الطلبات"
-          value={stats.totalOrders}
-          icon={ShoppingCart}
-          color="yellow"
-        />
-        <StatsCard
-          title="الكورسات"
-          value={stats.totalCourses}
-          icon={BookOpen}
-          color="purple"
-        />
-      </div>
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <Link href="/" className="inline-flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-2xl font-black text-white">S7EE7</span>
+          </Link>
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-full mb-6">
+            <Shield className="w-4 h-4" />
+            <span className="text-sm font-medium">لوحة التحكم</span>
+          </div>
+          
+          <h1 className="text-2xl font-bold text-white mb-2">تسجيل دخول المدير</h1>
+          <p className="text-gray-400">أدخل بياناتك للوصول للوحة التحكم</p>
+        </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Payments */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">آخر الطلبات</CardTitle>
-            <Link href="/admin/payments">
-              <Button variant="ghost" size="sm">
-                عرض الكل
-                <ArrowUpRight className="mr-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentPayments.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">لا توجد طلبات</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>المستخدم</TableHead>
-                    <TableHead>الكورس</TableHead>
-                    <TableHead>المبلغ</TableHead>
-                    <TableHead>الحالة</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-medium">
-                        {payment.user?.full_name || 'غير معروف'}
-                      </TableCell>
-                      <TableCell className="max-w-[150px] truncate">
-                        {payment.course?.title || '-'}
-                      </TableCell>
-                      <TableCell>{formatPrice(payment.amount_iqd)}</TableCell>
-                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Email */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              البريد الإلكتروني
+            </label>
+            <div className="relative">
+              <input
+                type="email"
+                autoComplete="email"
+                placeholder="admin@s7ee7.com"
+                disabled={isLoading}
+                className={`
+                  w-full h-12 px-4 pr-11
+                  bg-white/5 border rounded-xl
+                  text-white placeholder-gray-500
+                  transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
+                  disabled:opacity-50
+                  ${errors.email ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
+                `}
+                dir="ltr"
+                {...register('email')}
+              />
+              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+            </div>
+            {errors.email && (
+              <p className="text-sm text-red-400">{errors.email.message}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Recent Users */}
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">آخر المستخدمين</CardTitle>
-            <Link href="/admin/users">
-              <Button variant="ghost" size="sm">
-                عرض الكل
-                <ArrowUpRight className="mr-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentUsers.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">لا يوجد مستخدمين</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الاسم</TableHead>
-                    <TableHead>الدور</TableHead>
-                    <TableHead>التاريخ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">
-                        {user.full_name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {user.role === 'admin'
-                            ? 'أدمن'
-                            : user.role === 'instructor'
-                            ? 'مدرب'
-                            : 'طالب'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-gray-500">
-                        {formatDate(user.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+          {/* Password */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-300">
+              كلمة المرور
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                disabled={isLoading}
+                className={`
+                  w-full h-12 px-4 pr-11 pl-11
+                  bg-white/5 border rounded-xl
+                  text-white placeholder-gray-500
+                  transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
+                  disabled:opacity-50
+                  ${errors.password ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
+                `}
+                dir="ltr"
+                {...register('password')}
+              />
+              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="text-sm text-red-400">{errors.password.message}</p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Submit */}
+          <button 
+            type="submit" 
+            disabled={isLoading}
+            className="
+              w-full h-12 
+              bg-gradient-to-l from-purple-500 to-purple-600 
+              hover:from-purple-400 hover:to-purple-500
+              text-white font-bold text-base
+              rounded-xl
+              transition-all duration-200
+              disabled:opacity-50
+              flex items-center justify-center gap-2
+              shadow-lg shadow-purple-500/20
+            "
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>جاري التحقق...</span>
+              </>
+            ) : (
+              <>
+                <Shield className="w-5 h-5" />
+                <span>دخول لوحة التحكم</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Back to site */}
+        <p className="text-center text-gray-500 mt-8">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
+            العودة للموقع الرئيسي
+          </Link>
+        </p>
       </div>
     </div>
   )

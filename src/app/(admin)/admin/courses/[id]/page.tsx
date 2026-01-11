@@ -14,6 +14,7 @@ import {
   Upload,
   Save,
   BookOpen,
+  Award,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -74,6 +75,9 @@ export default function EditCoursePage() {
   const [requirements, setRequirements] = useState<string[]>([''])
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
+  const [certificateProvider, setCertificateProvider] = useState<string>('')
+  const [certificateName, setCertificateName] = useState<string>('')
+  const [certificateUrl, setCertificateUrl] = useState<string>('')
 
   const supabase = createClient()
 
@@ -147,6 +151,9 @@ export default function EditCoursePage() {
     )
     setRequirements(data.requirements?.length ? data.requirements : [''])
     setThumbnailPreview(data.thumbnail_url)
+    setCertificateProvider(data.certificate_provider || '')
+    setCertificateName(data.certificate_name || '')
+    setCertificateUrl(data.certificate_url || '')
 
     setIsLoading(false)
   }
@@ -249,6 +256,9 @@ export default function EditCoursePage() {
           thumbnail_url,
           what_you_learn: whatYouLearn.filter((item) => item.trim()),
           requirements: requirements.filter((item) => item.trim()),
+          certificate_provider: certificateProvider || null,
+          certificate_name: certificateName || null,
+          certificate_url: certificateUrl || null,
         })
         .eq('id', courseId)
 
@@ -618,6 +628,62 @@ export default function EditCoursePage() {
                 <Plus className="h-4 w-4 ml-1" />
                 إضافة متطلب
               </Button>
+            </CardContent>
+          </Card>
+
+          {/* Certificate Settings */}
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Award className="h-5 w-5 text-primary" />
+                الشهادة المعترف بها
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>مزود الشهادة</Label>
+                  <Select
+                    value={certificateProvider}
+                    onValueChange={setCertificateProvider}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر المزود" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Google">Google</SelectItem>
+                      <SelectItem value="Meta">Meta (Facebook)</SelectItem>
+                      <SelectItem value="LinkedIn">LinkedIn Learning</SelectItem>
+                      <SelectItem value="HubSpot">HubSpot</SelectItem>
+                      <SelectItem value="IBM">IBM</SelectItem>
+                      <SelectItem value="CompTIA">CompTIA</SelectItem>
+                      <SelectItem value="Microsoft">Microsoft</SelectItem>
+                      <SelectItem value="AWS">Amazon AWS</SelectItem>
+                      <SelectItem value="Coursera">Coursera</SelectItem>
+                      <SelectItem value="Udemy">Udemy</SelectItem>
+                      <SelectItem value="S7EE7">S7EE7 Academy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>اسم الشهادة</Label>
+                  <Input
+                    value={certificateName}
+                    onChange={(e) => setCertificateName(e.target.value)}
+                    placeholder="مثال: Google Ads Certification"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>رابط الشهادة</Label>
+                <Input
+                  type="url"
+                  value={certificateUrl}
+                  onChange={(e) => setCertificateUrl(e.target.value)}
+                  placeholder="https://..."
+                  dir="ltr"
+                />
+              </div>
             </CardContent>
           </Card>
 

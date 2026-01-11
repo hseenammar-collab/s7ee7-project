@@ -69,6 +69,10 @@ export interface Database {
           is_featured: boolean
           requirements: string[]
           what_you_learn: string[]
+          teachable_url: string | null
+          certificate_provider: string | null
+          certificate_name: string | null
+          certificate_url: string | null
           created_at: string
           updated_at: string
         }
@@ -94,6 +98,10 @@ export interface Database {
           is_featured?: boolean
           requirements?: string[]
           what_you_learn?: string[]
+          teachable_url?: string | null
+          certificate_provider?: string | null
+          certificate_name?: string | null
+          certificate_url?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -119,6 +127,10 @@ export interface Database {
           is_featured?: boolean
           requirements?: string[]
           what_you_learn?: string[]
+          teachable_url?: string | null
+          certificate_provider?: string | null
+          certificate_name?: string | null
+          certificate_url?: string | null
           created_at?: string
           updated_at?: string
         }
