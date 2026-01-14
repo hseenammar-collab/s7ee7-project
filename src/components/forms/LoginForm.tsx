@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,6 +27,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function LoginForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/my-courses'
+  const router = useRouter()
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -41,13 +42,12 @@ export default function LoginForm() {
   })
 
   // ─────────────────────────────────────────────────────────────
-  // SUBMIT HANDLER - Uses Supabase Client Directly
+  // SUBMIT HANDLER - Uses Supabase Client Directly 
   // ─────────────────────────────────────────────────────────────
-  const onSubmit = async (data: LoginFormData) => {
+   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
-      // Use Supabase client directly
       const supabase = createClient()
       
       const { data: authData, error } = await supabase.auth.signInWithPassword({
@@ -69,11 +69,7 @@ export default function LoginForm() {
 
       if (authData.user) {
         toast.success('أهلاً بعودتك! 🎉')
-        
-        // Redirect after successful login
-        setTimeout(() => {
-          window.location.href = redirect
-        }, 300)
+        window.location.replace('/my-courses')
       }
 
     } catch (error) {
@@ -82,7 +78,6 @@ export default function LoginForm() {
       setIsLoading(false)
     }
   }
-
   // ─────────────────────────────────────────────────────────────
   // GOOGLE LOGIN
   // ─────────────────────────────────────────────────────────────

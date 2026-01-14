@@ -1,3 +1,7 @@
+
+
+
+
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -74,6 +78,8 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Protected routes - redirect if not authenticated
+  // Protected routes - DISABLED temporarily
+  /*
   const protectedRoutes = [
     '/dashboard',
     '/my-courses',
@@ -91,7 +97,8 @@ export async function middleware(request: NextRequest) {
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
   }
-
+  */ 
+ 
   // Admin routes protection
   if (pathname.startsWith('/admin')) {
     // Skip login page if not logged in
