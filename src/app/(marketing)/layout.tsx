@@ -1,5 +1,4 @@
 import Navbar from '@/components/layout/Navbar'
-import Footer from '@/components/layout/Footer'
 
 export default function MarketingLayout({
   children,
@@ -9,8 +8,7 @@ export default function MarketingLayout({
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
       <Navbar />
-      <main>{children}</main>
-      <Footer />
+      {children}
     </div>
   )
 }

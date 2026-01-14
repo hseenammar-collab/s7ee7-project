@@ -93,21 +93,20 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <SecurityProvider>
-              <Analytics />
-              {children}
-              <WhatsAppButton phoneNumber="9647700000000" />
-              <Toaster
-                position="top-center"
-                richColors
-                closeButton
-                toastOptions={{
-                  style: {
-                    fontFamily: 'var(--font-cairo)',
-                  },
-                }}
-              />
-            </SecurityProvider>
+            {/* SecurityProvider معطل مؤقتاً - سبب مشكلة "جاري التحقق" */}
+            <Analytics />
+            {children}
+            <WhatsAppButton phoneNumber="9647700000000" />
+            <Toaster
+              position="top-center"
+              richColors
+              closeButton
+              toastOptions={{
+                style: {
+                  fontFamily: 'var(--font-cairo)',
+                },
+              }}
+            />
           </AuthProvider>
         </QueryProvider>
       </body>
