@@ -41,45 +41,40 @@ export default function LoginForm() {
   })
 
   // ─────────────────────────────────────────────────────────────
-  // SUBMIT HANDLER - Uses API Route
+  // SUBMIT HANDLER - Uses Supabase Client Directly
   // ─────────────────────────────────────────────────────────────
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
-      // Use API route for proper cookie handling
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        }),
+      // Use Supabase client directly
+      const supabase = createClient()
+      
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (result.error?.includes('Invalid login')) {
+      if (error) {
+        if (error.message?.includes('Invalid login')) {
           toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-        } else if (result.error?.includes('Email not confirmed')) {
+        } else if (error.message?.includes('Email not confirmed')) {
           toast.error('يرجى تأكيد بريدك الإلكتروني أولاً')
         } else {
-          toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
+          toast.error(error.message || 'حدث خطأ في تسجيل الدخول')
         }
         setIsLoading(false)
         return
       }
 
-      toast.success('أهلاً بعودتك! 🎉')
-      
-      // Redirect after successful login
-      // Small delay to ensure cookies are set
-      setTimeout(() => {
-        window.location.href = redirect
-      }, 300)
+      if (authData.user) {
+        toast.success('أهلاً بعودتك! 🎉')
+        
+        // Redirect after successful login
+        setTimeout(() => {
+          window.location.href = redirect
+        }, 300)
+      }
 
     } catch (error) {
       console.error('Login error:', error)
