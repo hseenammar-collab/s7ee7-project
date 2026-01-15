@@ -24,6 +24,7 @@ export async function POST(request: Request) {
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax',
                 httpOnly: true,
+                path: '/',
               })
             })
           },
@@ -32,37 +33,37 @@ export async function POST(request: Request) {
     )
 
     // 1. Sign in
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
       password,
     })
 
-    if (error) {
+    if (authError) {
       return NextResponse.json(
         { error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' },
         { status: 401 }
       )
     }
 
-    if (!data.user) {
+    if (!authData.user) {
       return NextResponse.json(
         { error: 'فشل تسجيل الدخول' },
         { status: 401 }
       )
     }
 
-    // 2. Check if admin
-    const { data: profile } = await supabase
+    // 2. Check if user is admin
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role, full_name')
-      .eq('id', data.user.id)
+      .select('role')
+      .eq('id', authData.user.id)
       .single()
 
-    if (!profile || profile.role !== 'admin') {
-      // Sign out non-admin users
+    if (profileError || profile?.role !== 'admin') {
+      // Sign out if not admin
       await supabase.auth.signOut()
       return NextResponse.json(
-        { error: 'ليس لديك صلاحيات الوصول للوحة التحكم' },
+        { error: 'ليس لديك صلاحية الوصول للوحة التحكم' },
         { status: 403 }
       )
     }
@@ -70,10 +71,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: profile.full_name,
-        role: profile.role,
+        id: authData.user.id,
+        email: authData.user.email,
+        role: 'admin'
       }
     })
 
