@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
 
@@ -10,16 +11,25 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname()
   const [status, setStatus] = useState<'loading' | 'authorized' | 'unauthorized'>('loading')
 
   useEffect(() => {
+    // Skip check for login page
+    if (pathname === '/admin/login') {
+      setStatus('authorized')
+      return
+    }
+
     const checkAdmin = async () => {
+      // Wait for cookies to sync
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
       const supabase = createClient()
       
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        // Not logged in - redirect to admin login
         window.location.href = '/admin/login'
         return
       }
@@ -32,7 +42,6 @@ export default function AdminLayout({
         .single()
 
       if (profile?.role !== 'admin') {
-        // Not admin - redirect to home
         window.location.href = '/'
         return
       }
@@ -40,14 +49,13 @@ export default function AdminLayout({
       setStatus('authorized')
     }
 
-    // Skip check for login page
-    if (window.location.pathname === '/admin/login') {
-      setStatus('authorized')
-      return
-    }
-
     checkAdmin()
-  }, [])
+  }, [pathname])
+
+  // Always show login page without loading
+  if (pathname === '/admin/login') {
+    return <>{children}</>
+  }
 
   if (status === 'loading') {
     return (
