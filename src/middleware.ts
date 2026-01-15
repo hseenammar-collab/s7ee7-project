@@ -1,11 +1,19 @@
-
-
-
-
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+// src/middleware.ts
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // Skip middleware for static files and API routes
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.') // static files
+  ) {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -20,33 +28,13 @@ export async function middleware(request: NextRequest) {
     'X-Frame-Options': 'SAMEORIGIN',
     'X-Content-Type-Options': 'nosniff',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-    'X-Permitted-Cross-Domain-Policies': 'none',
   }
 
-  // Apply security headers
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value)
   })
 
-  // CSP Header - Updated for security and compatibility
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net https://vercel.live https://*.vercel.app",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https: http: https://vercel.live",
-      "font-src 'self' https://fonts.gstatic.com data:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://vercel.live https://api.ipify.org https://*.vercel.app",
-      "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://vercel.live",
-      "frame-ancestors 'self'",
-      "form-action 'self'",
-      "base-uri 'self'",
-      "upgrade-insecure-requests",
-    ].join('; ')
-  )
-
+  // Create Supabase client with proper cookie handling
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -56,30 +44,38 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          // First update request cookies
+          cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
-          )
+          })
+          
+          // Create new response with updated request
           response = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
+          
+          // Apply security headers to new response
+          Object.entries(securityHeaders).forEach(([key, value]) => {
+            response.headers.set(key, value)
+          })
+          
+          // Set cookies on response
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, {
+              ...options,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+            })
+          })
         },
       },
     }
   )
 
-  // استخدام getUser بدل getSession للحصول على بيانات محدثة من السيرفر
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Get user - this also refreshes the session if needed
+  const { data: { user }, error } = await supabase.auth.getUser()
 
-  const pathname = request.nextUrl.pathname
-
-  // Protected routes - redirect if not authenticated
-  // Protected routes - DISABLED temporarily
-  /*
+  // Protected routes - require authentication
   const protectedRoutes = [
     '/dashboard',
     '/my-courses',
@@ -89,22 +85,19 @@ export async function middleware(request: NextRequest) {
     '/settings',
   ]
 
-  if (
-    protectedRoutes.some((route) => pathname.startsWith(route)) &&
-    !user
-  ) {
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+
+  if (isProtectedRoute && !user) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(redirectUrl)
   }
-  */ 
- 
+
   // Admin routes protection
   if (pathname.startsWith('/admin')) {
-    // Skip login page if not logged in
+    // Allow admin login page
     if (pathname === '/admin/login') {
       if (user) {
-        // User is logged in, check if admin
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
@@ -112,15 +105,13 @@ export async function middleware(request: NextRequest) {
           .single()
 
         if (profile?.role === 'admin') {
-          // Already admin, redirect to dashboard
           return NextResponse.redirect(new URL('/admin', request.url))
         }
       }
-      // Not logged in or not admin, show login page
       return response
     }
 
-    // All other admin routes require authentication
+    // All other admin routes require admin role
     if (!user) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
@@ -136,10 +127,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect logged in users away from auth pages
+  // Redirect logged-in users away from auth pages
   const authRoutes = ['/login', '/register', '/forgot-password']
   if (authRoutes.includes(pathname) && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Check for redirect param
+    const redirectTo = request.nextUrl.searchParams.get('redirect')
+    return NextResponse.redirect(new URL(redirectTo || '/my-courses', request.url))
   }
 
   return response
@@ -147,6 +140,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
