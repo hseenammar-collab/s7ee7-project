@@ -3,35 +3,42 @@
 
 import { createBrowserClient } from '@supabase/ssr'
 
-// Placeholder values for build time when env vars aren't available
-const PLACEHOLDER_URL = 'https://placeholder.supabase.co'
-const PLACEHOLDER_KEY = 'placeholder-key'
+// Singleton instance
+let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
-// Use flexible typing to avoid strict type checking issues with Supabase
-// This allows operations that may not be fully defined in Database types
 export function createClient() {
-  // Check if we're in a browser environment
-  const isBrowser = typeof window !== 'undefined'
+  // Return existing instance if available (singleton pattern)
+  if (supabaseInstance) {
+    return supabaseInstance
+  }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // In browser, we must have real credentials
-  if (isBrowser && (!url || !key)) {
+  // Check for missing env vars
+  if (!url || !key) {
+    // During build/SSR, return a dummy that won't be used
+    if (typeof window === 'undefined') {
+      return createBrowserClient(
+        'https://placeholder.supabase.co',
+        'placeholder-key'
+      )
+    }
     throw new Error('Missing Supabase environment variables')
   }
 
-  // During SSR/build without env vars, use placeholders
-  // The client won't actually make requests during static generation
-  return createBrowserClient(url || PLACEHOLDER_URL, key || PLACEHOLDER_KEY)
+  // Create and cache the instance
+  supabaseInstance = createBrowserClient(url, key, {
+    auth: {
+      flowType: 'pkce',
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  })
+
+  return supabaseInstance
 }
 
-// Lazy singleton for client components - only created when accessed
-let _supabase: ReturnType<typeof createBrowserClient> | null = null
-
-export function getSupabase() {
-  if (!_supabase) {
-    _supabase = createClient()
-  }
-  return _supabase
-}
+// Alias for backward compatibility
+export const getSupabase = createClient
