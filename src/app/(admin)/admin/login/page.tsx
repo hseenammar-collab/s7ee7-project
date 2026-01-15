@@ -1,7 +1,7 @@
 // src/app/(admin)/admin/login/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,7 +20,6 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [checkingAuth, setCheckingAuth] = useState(true)
 
   const {
     register,
@@ -30,72 +29,51 @@ export default function AdminLoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
-  // Check if already logged in as admin
-  useEffect(() => {
-    const checkExistingAuth = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        
-        if (profile?.role === 'admin') {
-          window.location.href = '/admin'
-          return
-        }
-      }
-      setCheckingAuth(false)
-    }
-    
-    checkExistingAuth()
-  }, [])
-
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/admin-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        }),
+      const supabase = createClient()
+      
+      // Sign in
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
       })
 
-      const result = await response.json()
+      if (authError) {
+        toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
+        setIsLoading(false)
+        return
+      }
 
-      if (!response.ok) {
-        toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
+      if (!authData.user) {
+        toast.error('فشل تسجيل الدخول')
+        setIsLoading(false)
+        return
+      }
+
+      // Check if admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (profile?.role !== 'admin') {
+        await supabase.auth.signOut()
+        toast.error('ليس لديك صلاحية الوصول للوحة التحكم')
         setIsLoading(false)
         return
       }
 
       toast.success('مرحباً بك في لوحة التحكم!')
-      
-      // Wait for cookies to sync, then redirect
-      setTimeout(() => {
-        window.location.replace('/admin')
-      }, 1000)
+      window.location.href = '/admin'
 
     } catch (error) {
       toast.error('حدث خطأ غير متوقع')
       setIsLoading(false)
     }
-  }
-
-  if (checkingAuth) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
-      </div>
-    )
   }
 
   return (
