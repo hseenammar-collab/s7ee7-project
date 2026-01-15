@@ -40,43 +40,34 @@ export default function LoginForm() {
     resolver: zodResolver(loginSchema),
   })
 
-  // ─────────────────────────────────────────────────────────────
-  // SUBMIT HANDLER - Uses API Route for Server-Side Cookie Handling
-  // ─────────────────────────────────────────────────────────────
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
-      // Use API route for proper server-side cookie handling
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        }),
+      const supabase = createClient()
+      
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (result.error?.includes('Invalid login')) {
+      if (error) {
+        if (error.message?.includes('Invalid login')) {
           toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-        } else if (result.error?.includes('Email not confirmed')) {
+        } else if (error.message?.includes('Email not confirmed')) {
           toast.error('يرجى تأكيد بريدك الإلكتروني أولاً')
         } else {
-          toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
+          toast.error(error.message || 'حدث خطأ في تسجيل الدخول')
         }
         setIsLoading(false)
         return
       }
 
-      toast.success('أهلاً بعودتك! 🎉')
-      
-      // Cookies are now set server-side, redirect immediately
-      window.location.href = redirect
+      if (authData.user) {
+        toast.success('أهلاً بعودتك! 🎉')
+        // Simple redirect - let the page handle auth check
+        window.location.href = redirect
+      }
 
     } catch (error) {
       console.error('Login error:', error)
@@ -85,9 +76,6 @@ export default function LoginForm() {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // GOOGLE LOGIN
-  // ─────────────────────────────────────────────────────────────
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true)
     
@@ -111,13 +99,10 @@ export default function LoginForm() {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════
-  // RENDER
-  // ═══════════════════════════════════════════════════════════════
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       
-      {/* EMAIL FIELD */}
+      {/* EMAIL */}
       <div className="space-y-2">
         <label htmlFor="email" className="block text-sm font-medium text-gray-300">
           البريد الإلكتروني
@@ -144,23 +129,17 @@ export default function LoginForm() {
           <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
         </div>
         {errors.email && (
-          <p className="text-sm text-red-400 flex items-center gap-1">
-            <span className="inline-block w-1 h-1 bg-red-400 rounded-full" />
-            {errors.email.message}
-          </p>
+          <p className="text-sm text-red-400">{errors.email.message}</p>
         )}
       </div>
 
-      {/* PASSWORD FIELD */}
+      {/* PASSWORD */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label htmlFor="password" className="block text-sm font-medium text-gray-300">
             كلمة المرور
           </label>
-          <Link 
-            href="/forgot-password" 
-            className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
-          >
+          <Link href="/forgot-password" className="text-sm text-cyan-400 hover:text-cyan-300">
             نسيت كلمة المرور؟
           </Link>
         </div>
@@ -187,21 +166,18 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
             tabIndex={-1}
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-sm text-red-400 flex items-center gap-1">
-            <span className="inline-block w-1 h-1 bg-red-400 rounded-full" />
-            {errors.password.message}
-          </p>
+          <p className="text-sm text-red-400">{errors.password.message}</p>
         )}
       </div>
 
-      {/* SUBMIT BUTTON */}
+      {/* SUBMIT */}
       <button 
         type="submit" 
         disabled={isLoading || isGoogleLoading}
@@ -215,7 +191,6 @@ export default function LoginForm() {
           disabled:opacity-50 disabled:cursor-not-allowed
           flex items-center justify-center gap-2
           shadow-lg shadow-cyan-500/20
-          hover:shadow-cyan-500/30
         "
       >
         {isLoading ? (
@@ -241,7 +216,7 @@ export default function LoginForm() {
         </div>
       </div>
 
-      {/* GOOGLE LOGIN */}
+      {/* GOOGLE */}
       <button
         type="button"
         onClick={handleGoogleLogin}
@@ -275,10 +250,7 @@ export default function LoginForm() {
       {/* REGISTER LINK */}
       <p className="text-center text-gray-400 mt-8">
         ما عندك حساب؟{' '}
-        <Link 
-          href="/register" 
-          className="text-cyan-400 font-medium hover:text-cyan-300 transition-colors"
-        >
+        <Link href="/register" className="text-cyan-400 font-medium hover:text-cyan-300">
           ابدأ مسارك
         </Link>
       </p>
