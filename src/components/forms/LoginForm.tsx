@@ -42,9 +42,9 @@ export default function LoginForm() {
   })
 
   // ─────────────────────────────────────────────────────────────
-  // SUBMIT HANDLER - Uses Supabase Client Directly 
+  // SUBMIT HANDLER
   // ─────────────────────────────────────────────────────────────
-   const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
@@ -69,7 +69,15 @@ export default function LoginForm() {
 
       if (authData.user) {
         toast.success('أهلاً بعودتك! 🎉')
-        window.location.replace('/my-courses')
+        
+        // Wait for cookies to be set, then refresh and redirect
+        await new Promise(resolve => setTimeout(resolve, 500))
+        router.refresh()
+        
+        // Use setTimeout to ensure cookies are synced
+        setTimeout(() => {
+          window.location.href = redirect
+        }, 100)
       }
 
     } catch (error) {
@@ -78,6 +86,7 @@ export default function LoginForm() {
       setIsLoading(false)
     }
   }
+
   // ─────────────────────────────────────────────────────────────
   // GOOGLE LOGIN
   // ─────────────────────────────────────────────────────────────
