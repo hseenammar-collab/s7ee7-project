@@ -21,10 +21,10 @@ export async function POST(request: Request) {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, {
                 ...options,
-                // Important for production
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax',
                 httpOnly: true,
+                path: '/',
               })
             })
           },
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     )
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim().toLowerCase(),
       password,
     })
 
@@ -44,26 +44,20 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if admin (optional - for admin login)
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, full_name')
-        .eq('id', data.user.id)
-        .single()
-
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: data.user.id,
-          email: data.user.email,
-          role: profile?.role || 'student',
-          name: profile?.full_name,
-        }
-      })
+    if (!data.user) {
+      return NextResponse.json(
+        { error: 'Login failed' },
+        { status: 401 }
+      )
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+      }
+    })
 
   } catch (error) {
     console.error('Login error:', error)

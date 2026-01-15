@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,7 +27,6 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function LoginForm() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/my-courses'
-  const router = useRouter()
   
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -42,43 +41,42 @@ export default function LoginForm() {
   })
 
   // ─────────────────────────────────────────────────────────────
-  // SUBMIT HANDLER
+  // SUBMIT HANDLER - Uses API Route for Server-Side Cookie Handling
   // ─────────────────────────────────────────────────────────────
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
 
     try {
-      const supabase = createClient()
-      
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
+      // Use API route for proper server-side cookie handling
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+        }),
       })
 
-      if (error) {
-        if (error.message?.includes('Invalid login')) {
+      const result = await response.json()
+
+      if (!response.ok) {
+        if (result.error?.includes('Invalid login')) {
           toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-        } else if (error.message?.includes('Email not confirmed')) {
+        } else if (result.error?.includes('Email not confirmed')) {
           toast.error('يرجى تأكيد بريدك الإلكتروني أولاً')
         } else {
-          toast.error(error.message || 'حدث خطأ في تسجيل الدخول')
+          toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
         }
         setIsLoading(false)
         return
       }
 
-      if (authData.user) {
-        toast.success('أهلاً بعودتك! 🎉')
-        
-        // Wait for cookies to be set, then refresh and redirect
-        await new Promise(resolve => setTimeout(resolve, 500))
-        router.refresh()
-        
-        // Use setTimeout to ensure cookies are synced
-        setTimeout(() => {
-          window.location.href = redirect
-        }, 100)
-      }
+      toast.success('أهلاً بعودتك! 🎉')
+      
+      // Cookies are now set server-side, redirect immediately
+      window.location.href = redirect
 
     } catch (error) {
       console.error('Login error:', error)
