@@ -7,7 +7,7 @@ import { createBrowserClient } from '@supabase/ssr'
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
-  // Return existing instance if available (singleton pattern)
+  // Return existing instance if available
   if (supabaseInstance) {
     return supabaseInstance
   }
@@ -15,27 +15,21 @@ export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Check for missing env vars
-  if (!url || !key) {
-    // During build/SSR, return a dummy that won't be used
-    if (typeof window === 'undefined') {
-      return createBrowserClient(
-        'https://placeholder.supabase.co',
-        'placeholder-key'
-      )
-    }
+  // Check for missing env vars in browser
+  if (typeof window !== 'undefined' && (!url || !key)) {
     throw new Error('Missing Supabase environment variables')
   }
 
-  // Create and cache the instance
-  supabaseInstance = createBrowserClient(url, key, {
-    auth: {
-      flowType: 'pkce',
-      detectSessionInUrl: true,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  })
+  // During SSR/build without env vars, use placeholders
+  if (!url || !key) {
+    return createBrowserClient(
+      'https://placeholder.supabase.co',
+      'placeholder-key'
+    )
+  }
+
+  // Create client - let @supabase/ssr handle cookies automatically
+  supabaseInstance = createBrowserClient(url, key)
 
   return supabaseInstance
 }
