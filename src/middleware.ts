@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     },
   })
 
-  // Security Headers only
+  // Security Headers
   response.headers.set('X-Frame-Options', 'SAMEORIGIN')
   response.headers.set('X-Content-Type-Options', 'nosniff')
 
@@ -49,26 +49,8 @@ export async function middleware(request: NextRequest) {
   )
 
   // Just refresh session - no redirects
+  // All protection handled client-side
   await supabase.auth.getUser()
-
-  // Only protect admin routes
-  if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return NextResponse.redirect(new URL('/admin/login', request.url))
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-  }
 
   return response
 }
