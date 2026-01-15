@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { BookOpen, Clock, PlayCircle, CheckCircle, ExternalLink } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -18,31 +19,48 @@ interface EnrollmentWithCourse extends Enrollment {
 type FilterType = 'all' | 'in_progress' | 'completed'
 
 export default function MyCoursesPage() {
+  const { user, loading: authLoading } = useAuth()
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
   const [filter, setFilter] = useState<FilterType>('all')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // Wait for auth to be ready
+    if (authLoading) return
+    
+    // Redirect if not logged in
+    if (!user) {
+      window.location.href = '/login'
+      return
+    }
+
     const fetchEnrollments = async () => {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const supabase = createClient()
 
-      const { data } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-        .order('enrolled_at', { ascending: false })
+        const { data, error } = await supabase
+          .from('enrollments')
+          .select(`
+            *,
+            course:courses(*)
+          `)
+          .eq('user_id', user.id)
+          .order('enrolled_at', { ascending: false })
 
-      setEnrollments((data || []) as EnrollmentWithCourse[])
-      setIsLoading(false)
+        if (error) {
+          console.error('Error fetching enrollments:', error)
+        }
+
+        setEnrollments((data || []) as EnrollmentWithCourse[])
+      } catch (error) {
+        console.error('Error:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
 
     fetchEnrollments()
-  }, [])
+  }, [user, authLoading])
 
   const filteredEnrollments = enrollments.filter((enrollment) => {
     if (filter === 'all') return true
@@ -59,16 +77,27 @@ export default function MyCoursesPage() {
     })
   }
 
-  if (isLoading) {
+  // Show loading while auth is initializing
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-6">
-        <div className="space-y-6">
-          <div className="h-8 w-32 bg-white/10 rounded animate-pulse" />
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-64 bg-white/5 rounded-xl animate-pulse" />
-            ))}
-          </div>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">جاري التحميل...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If no user after auth loaded, show message
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-400 mb-4">يرجى تسجيل الدخول أولاً</p>
+          <Link href="/login">
+            <Button className="bg-cyan-500 hover:bg-cyan-600">تسجيل الدخول</Button>
+          </Link>
         </div>
       </div>
     )
