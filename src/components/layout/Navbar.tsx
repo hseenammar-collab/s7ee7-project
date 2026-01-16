@@ -86,7 +86,10 @@ export default function Navbar() {
           ? 'bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/10'
           : 'bg-transparent'
       }`}
-      style={{ transform: mounted ? 'translateY(0)' : 'translateY(-100%)' }}
+      style={{ 
+        transform: mounted ? 'translateY(0)' : 'translateY(-100%)',
+        transition: 'transform 0.3s ease-out'
+      }}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
@@ -121,14 +124,14 @@ export default function Navbar() {
           {/* Actions */}
           <div className="hidden lg:flex items-center gap-4">
             {/* Search Button */}
-            <Link href="/courses" aria-label="البحث عن كورسات">
+            <Link href="/courses">
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-gray-400 hover:text-white hover:bg-white/10"
+                aria-label="البحث عن كورسات"
               >
                 <Search className="h-5 w-5" />
-                <span className="sr-only">البحث</span>
               </Button>
             </Link>
 
@@ -148,7 +151,7 @@ export default function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <button 
                       className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                      aria-label="قائمة المستخدم"
+                      aria-label="قائمة حسابي"
                     >
                       <Avatar className="h-9 w-9 ring-2 ring-purple-500/50">
                         <AvatarImage src={profile?.avatar_url || ''} />
@@ -230,10 +233,10 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button - MUST have aria-label */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"
+            className="lg:hidden p-3 min-w-[48px] min-h-[48px] rounded-lg text-gray-400 hover:text-white hover:bg-white/10 flex items-center justify-center"
             aria-label={isOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
             aria-expanded={isOpen}
             aria-controls="mobile-menu"
@@ -246,8 +249,9 @@ export default function Navbar() {
         <div
           id="mobile-menu"
           className={`lg:hidden overflow-hidden transition-all duration-300 ${
-            isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+            isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
           }`}
+          aria-hidden={!isOpen}
         >
           <div className="py-4 border-t border-white/10">
             <div className="flex flex-col gap-2">

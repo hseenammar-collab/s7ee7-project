@@ -106,22 +106,20 @@ export function Testimonials({ className = '' }: { className?: string }) {
 
         {/* Testimonials Carousel */}
         <div className="relative max-w-4xl mx-auto">
-          {/* Navigation Arrows */}
+          {/* Navigation Arrows - with proper touch targets */}
           <button
             onClick={goToPrevious}
             aria-label="الشهادة السابقة"
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 z-10 w-12 h-12 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 rounded-full flex items-center justify-center text-[#D4AF37] transition-all"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 rounded-full flex items-center justify-center text-[#D4AF37] transition-all"
           >
             <ChevronRight className="w-6 h-6" />
-            <span className="sr-only">السابق</span>
           </button>
           <button
             onClick={goToNext}
             aria-label="الشهادة التالية"
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 z-10 w-12 h-12 bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 rounded-full flex items-center justify-center text-[#D4AF37] transition-all"
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-[#D4AF37]/20 hover:bg-[#D4AF37]/30 rounded-full flex items-center justify-center text-[#D4AF37] transition-all"
           >
             <ChevronLeft className="w-6 h-6" />
-            <span className="sr-only">التالي</span>
           </button>
 
           {/* Testimonial Card */}
@@ -138,7 +136,7 @@ export function Testimonials({ className = '' }: { className?: string }) {
 
               {/* Text */}
               <p className="text-xl md:text-2xl text-[#F5F5DC] leading-relaxed mb-8">
-                "{currentTestimonial.text}"
+                &quot;{currentTestimonial.text}&quot;
               </p>
 
               {/* Author */}
@@ -167,8 +165,8 @@ export function Testimonials({ className = '' }: { className?: string }) {
             </div>
           </div>
 
-          {/* Dots Indicator */}
-          <div className="flex justify-center gap-3 mt-6" role="tablist" aria-label="اختيار الشهادة">
+          {/* Dots Indicator - with proper touch targets (48px minimum) */}
+          <div className="flex justify-center gap-2 mt-6" role="tablist" aria-label="اختيار الشهادة">
             {testimonials.map((_, index) => (
               <button
                 key={index}
@@ -176,12 +174,16 @@ export function Testimonials({ className = '' }: { className?: string }) {
                 role="tab"
                 aria-selected={index === currentIndex}
                 aria-label={`شهادة ${index + 1} من ${testimonials.length}`}
-                className={`h-3 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'w-8 bg-[#D4AF37]'
-                    : 'w-3 bg-[#D4AF37]/30 hover:bg-[#D4AF37]/50'
-                }`}
-              />
+                className={`min-w-[44px] min-h-[44px] p-4 flex items-center justify-center transition-all`}
+              >
+                <span 
+                  className={`block h-3 rounded-full transition-all ${
+                    index === currentIndex
+                      ? 'w-8 bg-[#D4AF37]'
+                      : 'w-3 bg-[#D4AF37]/30'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </div>

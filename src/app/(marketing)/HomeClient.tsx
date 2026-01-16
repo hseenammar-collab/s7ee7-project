@@ -668,24 +668,26 @@ export default function HomeClient({
 
           {/* Testimonials Carousel */}
           <div className="relative max-w-4xl mx-auto">
-            {/* Navigation Arrows */}
+            {/* Navigation Arrows - with proper touch targets (48px+) */}
             <button
               onClick={() =>
                 setCurrentTestimonial(
                   (prev) => (prev - 1 + testimonials.length) % testimonials.length
                 )
               }
-              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 z-10 w-10 h-10 bg-sumerian-gold/20 hover:bg-sumerian-gold/30 rounded-full flex items-center justify-center text-sumerian-gold transition-all"
+              aria-label="الشهادة السابقة"
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 md:-translate-x-12 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-sumerian-gold/20 hover:bg-sumerian-gold/30 rounded-full flex items-center justify-center text-sumerian-gold transition-all"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-6 h-6" />
             </button>
             <button
               onClick={() =>
                 setCurrentTestimonial((prev) => (prev + 1) % testimonials.length)
               }
-              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 z-10 w-10 h-10 bg-sumerian-gold/20 hover:bg-sumerian-gold/30 rounded-full flex items-center justify-center text-sumerian-gold transition-all"
+              aria-label="الشهادة التالية"
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 md:translate-x-12 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-sumerian-gold/20 hover:bg-sumerian-gold/30 rounded-full flex items-center justify-center text-sumerian-gold transition-all"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-6 h-6" />
             </button>
 
             {/* Testimonial Card */}
@@ -716,20 +718,21 @@ export default function HomeClient({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h4 className="font-bold text-sumerian-cream">
+                    <h3 className="font-bold text-sumerian-cream">
                       {testimonials[currentTestimonial].name}
-                    </h4>
+                    </h3>
                     <p className="text-gray-400 text-sm">
                       {testimonials[currentTestimonial].role} •{' '}
                       {testimonials[currentTestimonial].company}
                     </p>
                   </div>
-                  <div className="mr-auto flex gap-1">
+                  <div className="mr-auto flex gap-1" aria-label={`تقييم ${testimonials[currentTestimonial].rating} من 5`}>
                     {[...Array(testimonials[currentTestimonial].rating)].map(
                       (_, i) => (
                         <Star
                           key={i}
                           className="w-5 h-5 text-sumerian-gold fill-sumerian-gold"
+                          aria-hidden="true"
                         />
                       )
                     )}
@@ -738,18 +741,25 @@ export default function HomeClient({
               </motion.div>
             </AnimatePresence>
 
-            {/* Dots Indicator */}
-            <div className="flex justify-center gap-2 mt-6">
+            {/* Dots Indicator - with proper touch targets (48px minimum) */}
+            <div className="flex justify-center gap-1 mt-6" role="tablist" aria-label="اختيار الشهادة">
               {testimonials.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentTestimonial(index)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentTestimonial
-                      ? 'w-8 bg-sumerian-gold'
-                      : 'bg-sumerian-gold/30'
-                  }`}
-                />
+                  role="tab"
+                  aria-selected={index === currentTestimonial}
+                  aria-label={`شهادة ${index + 1} من ${testimonials.length}`}
+                  className="min-w-[44px] min-h-[44px] p-4 flex items-center justify-center"
+                >
+                  <span
+                    className={`block h-3 rounded-full transition-all ${
+                      index === currentTestimonial
+                        ? 'w-8 bg-sumerian-gold'
+                        : 'w-3 bg-sumerian-gold/30'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </div>
@@ -1107,7 +1117,8 @@ export default function HomeClient({
                 <code className="text-green-400 font-mono">07801234567</code>
                 <button
                   onClick={() => copyToClipboard('07801234567', 'zain')}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label="نسخ رقم زين كاش"
                 >
                   {copiedAccount === 'zain' ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -1139,7 +1150,8 @@ export default function HomeClient({
                 <code className="text-blue-400 font-mono">07701234567</code>
                 <button
                   onClick={() => copyToClipboard('07701234567', 'asia')}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label="نسخ رقم آسيا حوالة"
                 >
                   {copiedAccount === 'asia' ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -1340,7 +1352,8 @@ export default function HomeClient({
                   </Link>
                   <button
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="p-3 bg-sumerian-gold/20 rounded-xl hover:bg-sumerian-gold/30 transition-colors"
+                    className="p-3 min-w-[48px] min-h-[48px] bg-sumerian-gold/20 rounded-xl hover:bg-sumerian-gold/30 transition-colors flex items-center justify-center"
+                    aria-label="العودة للأعلى"
                   >
                     <ChevronDown className="w-5 h-5 text-sumerian-gold rotate-180" />
                   </button>
@@ -1371,9 +1384,10 @@ export default function HomeClient({
               {/* Close button */}
               <button
                 onClick={() => setShowVideoModal(false)}
-                className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                className="absolute top-4 right-4 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+                aria-label="إغلاق الفيديو"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
 
               {/* Video placeholder */}
