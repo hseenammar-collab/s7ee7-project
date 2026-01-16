@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 const nextConfig = {
   // Image optimization
   images: {
@@ -18,7 +22,6 @@ const nextConfig = {
   // Security and caching headers
   async headers() {
     return [
-      // Security headers for all pages
       {
         source: '/:path*',
         headers: [
@@ -29,83 +32,71 @@ const nextConfig = {
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
-          { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
         ],
       },
-      // No cache for API routes
       {
         source: '/api/:path*',
         headers: [
           { key: 'Cache-Control', value: 'no-store, max-age=0' },
         ],
       },
-      // Image caching
       {
         source: '/:all*(svg|jpg|jpeg|png|gif|ico|webp|avif)',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
-      // Static assets caching
       {
         source: '/_next/static/:path*',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Fonts caching
-      {
-        source: '/fonts/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ]
   },
 
-  // Compression
   compress: true,
-
-  // Remove powered by header
   poweredByHeader: false,
-
-  // Strict mode
   reactStrictMode: true,
 
-  // Server actions and experimental features
   experimental: {
-    serverActions: {
-      allowedOrigins: ['localhost:3000'],
-    },
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      '@radix-ui/react-icons',
+      'date-fns',
+    ],
   },
 
-  // Webpack optimizations
   webpack: (config, { dev, isServer }) => {
-    // Production optimizations
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
         chunks: 'all',
         minSize: 20000,
-        maxSize: 244000,
+        maxSize: 100000,
         cacheGroups: {
+          framework: {
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+            priority: 40,
+            chunks: 'all',
+            enforce: true,
+          },
           commons: {
             name: 'commons',
             chunks: 'initial',
             minChunks: 2,
+            priority: 20,
           },
-          vendor: {
+          lib: {
             test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
+            name(module) {
+              const packageName = module.context.match(/[\\/]node_modules[\\/](.*?)([\\/]|$)/)?.[1]
+              return `npm.${packageName?.replace('@', '')}`
+            },
+            priority: 10,
+            minChunks: 1,
+            reuseExistingChunk: true,
           },
         },
       }
@@ -114,4 +105,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig)
