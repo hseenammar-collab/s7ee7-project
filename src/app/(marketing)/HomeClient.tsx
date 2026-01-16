@@ -741,7 +741,7 @@ export default function HomeClient({
               </motion.div>
             </AnimatePresence>
 
-            {/* Dots Indicator - with proper touch targets (48px minimum) */}
+            {/* Dots Indicator - with proper touch targets */}
             <div className="flex justify-center gap-1 mt-6" role="tablist" aria-label="اختيار الشهادة">
               {testimonials.map((_, index) => (
                 <button
@@ -799,10 +799,13 @@ export default function HomeClient({
           </motion.div>
 
           {/* Filter tabs with Mesopotamian style */}
-          <div className="flex flex-wrap gap-2 mb-8 overflow-x-auto pb-2">
+          <div className="flex flex-wrap gap-2 mb-8 overflow-x-auto pb-2" role="tablist" aria-label="تصفية الكورسات">
             <button
               onClick={() => setActiveFilter('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+              role="tab"
+              aria-selected={activeFilter === 'all'}
+              aria-label="عرض جميع الكورسات"
+              className={`px-4 py-2 min-h-[44px] rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                 activeFilter === 'all'
                   ? 'bg-sumerian-gold text-sumerian-dark'
                   : 'bg-sumerian-gold/10 text-gray-400 hover:bg-sumerian-gold/20 border border-sumerian-gold/20'
@@ -814,7 +817,10 @@ export default function HomeClient({
               <button
                 key={cat.id}
                 onClick={() => setActiveFilter(cat.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                role="tab"
+                aria-selected={activeFilter === cat.id}
+                aria-label={`عرض كورسات ${cat.name}`}
+                className={`px-4 py-2 min-h-[44px] rounded-full text-sm font-medium transition-all whitespace-nowrap ${
                   activeFilter === cat.id
                     ? 'bg-sumerian-gold text-sumerian-dark'
                     : 'bg-sumerian-gold/10 text-gray-400 hover:bg-sumerian-gold/20 border border-sumerian-gold/20'
@@ -1117,8 +1123,8 @@ export default function HomeClient({
                 <code className="text-green-400 font-mono">07801234567</code>
                 <button
                   onClick={() => copyToClipboard('07801234567', 'zain')}
-                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="نسخ رقم زين كاش"
+                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   {copiedAccount === 'zain' ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -1150,8 +1156,8 @@ export default function HomeClient({
                 <code className="text-blue-400 font-mono">07701234567</code>
                 <button
                   onClick={() => copyToClipboard('07701234567', 'asia')}
-                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="نسخ رقم آسيا حوالة"
+                  className="text-gray-400 hover:text-white transition-colors p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
                 >
                   {copiedAccount === 'asia' ? (
                     <CheckCircle className="w-5 h-5 text-green-400" />
@@ -1217,7 +1223,9 @@ export default function HomeClient({
                   onClick={() =>
                     setExpandedFAQ(expandedFAQ === index ? null : index)
                   }
-                  className="w-full clay-tablet rounded-xl p-5 text-right hover:border-sumerian-gold/40 transition-all"
+                  aria-expanded={expandedFAQ === index}
+                  aria-label={`${faq.question} - ${expandedFAQ === index ? 'إغلاق' : 'فتح'}`}
+                  className="w-full clay-tablet rounded-xl p-5 min-h-[48px] text-right hover:border-sumerian-gold/40 transition-all"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <h3 className="font-semibold text-sumerian-cream">
@@ -1227,6 +1235,7 @@ export default function HomeClient({
                       className={`w-5 h-5 text-sumerian-gold transition-transform flex-shrink-0 ${
                         expandedFAQ === index ? 'rotate-180' : ''
                       }`}
+                      aria-hidden="true"
                     />
                   </div>
                   <AnimatePresence>
@@ -1352,10 +1361,10 @@ export default function HomeClient({
                   </Link>
                   <button
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="p-3 min-w-[48px] min-h-[48px] bg-sumerian-gold/20 rounded-xl hover:bg-sumerian-gold/30 transition-colors flex items-center justify-center"
                     aria-label="العودة للأعلى"
+                    className="p-3 min-w-[48px] min-h-[48px] bg-sumerian-gold/20 rounded-xl hover:bg-sumerian-gold/30 transition-colors flex items-center justify-center"
                   >
-                    <ChevronDown className="w-5 h-5 text-sumerian-gold rotate-180" />
+                    <ChevronDown className="w-5 h-5 text-sumerian-gold rotate-180" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -1384,10 +1393,10 @@ export default function HomeClient({
               {/* Close button */}
               <button
                 onClick={() => setShowVideoModal(false)}
-                className="absolute top-4 right-4 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
                 aria-label="إغلاق الفيديو"
+                className="absolute top-4 right-4 z-10 w-12 h-12 min-w-[48px] min-h-[48px] bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-6 h-6" aria-hidden="true" />
               </button>
 
               {/* Video placeholder */}
