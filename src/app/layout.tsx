@@ -11,9 +11,11 @@ import WhatsAppButton from '@/components/WhatsAppButton'
 
 const notoKufi = Noto_Kufi_Arabic({ 
   subsets: ['arabic'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-noto-kufi',
-  display: 'swap',
+  display: 'swap', // Critical: prevents font blocking
+  preload: true,
+  fallback: ['system-ui', 'arial'],
 })
 
 export const metadata: Metadata = {
@@ -22,21 +24,13 @@ export const metadata: Metadata = {
     template: '%s | S7EE7 Academy'
   },
   description: 'تعلم التسويق الرقمي، البرمجة، الأمن السيبراني والمزيد. 41 كورس في 7 تخصصات مع شهادات معتمدة.',
-  keywords: ['كورسات عربية', 'تسويق رقمي', 'برمجة', 'تعلم اونلاين', 'أمن سيبراني', 'العراق', 'كورسات برمجة', 'Meta Ads', 'Google Ads'],
+  keywords: ['كورسات عربية', 'تسويق رقمي', 'برمجة', 'تعلم اونلاين', 'أمن سيبراني', 'العراق'],
   authors: [{ name: 'S7EE7 Academy' }],
   creator: 'S7EE7 Academy',
   publisher: 'S7EE7 Academy',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
   metadataBase: new URL('https://s7ee7.com'),
   alternates: {
     canonical: '/',
-    languages: {
-      'ar-IQ': '/',
-    },
   },
   openGraph: {
     type: 'website',
@@ -50,7 +44,7 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'S7EE7 Academy - منصة التعلم الرقمي العربية',
+        alt: 'S7EE7 Academy',
       },
     ],
   },
@@ -59,7 +53,6 @@ export const metadata: Metadata = {
     title: 'S7EE7 Academy - منصة التعلم الرقمي العربية',
     description: 'تعلم التسويق الرقمي والبرمجة بالعربي',
     images: ['/og-image.png'],
-    creator: '@s7ee7academy',
   },
   robots: {
     index: true,
@@ -82,6 +75,10 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" className="dark">
       <head>
+        {/* Preconnect to critical origins */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <OrganizationSchema />
         <WebsiteSchema />
       </head>
