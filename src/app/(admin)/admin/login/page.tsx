@@ -21,54 +21,18 @@ import {
 export default function AdminDashboard() {
   const [status, setStatus] = useState<'loading' | 'authorized' | 'unauthorized'>('loading')
   const [stats, setStats] = useState({ users: 0, courses: 0, orders: 0, revenue: 0 })
-  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const supabase = createClient()
-        
-        // Wait a bit for session to be ready
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        // Get session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        console.log('Session check:', { session: !!session, error: sessionError })
-        
-        if (sessionError || !session?.user) {
-          console.log('No session, redirecting to login')
-          setStatus('unauthorized')
-          return
-        }
+    const supabase = createClient()
 
-        console.log('User ID:', session.user.id)
+    const checkAdmin = async (userId: string) => {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single()
 
-        // Check admin role
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, email')
-          .eq('id', session.user.id)
-          .single()
-
-        console.log('Profile check:', { profile, error: profileError })
-
-        if (profileError) {
-          console.error('Profile error:', profileError)
-          setErrorMsg(`خطأ في جلب الصلاحيات: ${profileError.message}`)
-          setStatus('unauthorized')
-          return
-        }
-
-        if (profile?.role !== 'admin') {
-          console.log('Not admin, role:', profile?.role)
-          setErrorMsg('ليس لديك صلاحية أدمن')
-          setStatus('unauthorized')
-          return
-        }
-
-        console.log('Admin verified!')
-
+      if (profile?.role === 'admin') {
         // Load stats
         const [usersRes, coursesRes, ordersRes] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -76,24 +40,40 @@ export default function AdminDashboard() {
           supabase.from('orders').select('total_amount')
         ])
 
-        const revenue = ordersRes.data?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
-
         setStats({
           users: usersRes.count || 0,
           courses: coursesRes.count || 0,
           orders: ordersRes.data?.length || 0,
-          revenue
+          revenue: ordersRes.data?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
         })
 
         setStatus('authorized')
-      } catch (error) {
-        console.error('Auth error:', error)
-        setErrorMsg('خطأ غير متوقع')
+      } else {
         setStatus('unauthorized')
       }
     }
 
-    checkAuth()
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, 'User:', session?.user?.email)
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        await checkAdmin(session.user.id)
+      } else if (event === 'SIGNED_OUT' || !session) {
+        setStatus('unauthorized')
+      }
+    })
+
+    // Also check current session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        checkAdmin(session.user.id)
+      } else {
+        setStatus('unauthorized')
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const handleLogout = async () => {
@@ -102,7 +82,6 @@ export default function AdminDashboard() {
     window.location.href = '/admin/login'
   }
 
-  // Show loading
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
@@ -114,7 +93,6 @@ export default function AdminDashboard() {
     )
   }
 
-  // Unauthorized - show message with redirect button
   if (status === 'unauthorized') {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4" dir="rtl">
@@ -123,10 +101,7 @@ export default function AdminDashboard() {
             <Settings className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-xl font-bold text-white mb-2">غير مصرح</h1>
-          <p className="text-gray-400 mb-2">يرجى تسجيل الدخول كمدير</p>
-          {errorMsg && (
-            <p className="text-red-400 text-sm mb-4 bg-red-500/10 p-2 rounded">{errorMsg}</p>
-          )}
+          <p className="text-gray-400 mb-4">يرجى تسجيل الدخول كمدير</p>
           <Link 
             href="/admin/login"
             className="inline-block px-6 py-3 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-xl transition-colors"
@@ -150,7 +125,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]" dir="rtl">
-      {/* Sidebar */}
       <aside className="fixed right-0 top-0 h-full w-64 bg-[#111] border-l border-white/10 p-4">
         <div className="flex items-center gap-3 mb-8 px-2">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -186,12 +160,10 @@ export default function AdminDashboard() {
         </button>
       </aside>
 
-      {/* Main */}
       <main className="mr-64 p-8">
         <h1 className="text-2xl font-bold text-white mb-2">مرحباً بك في لوحة التحكم</h1>
         <p className="text-gray-400 mb-8">إدارة منصة S7EE7 التعليمية</p>
 
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-6 mb-8">
           <div className="bg-white/5 border border-white/10 rounded-xl p-6">
             <Users className="w-8 h-8 text-blue-400 mb-4" />
@@ -215,7 +187,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4">إجراءات سريعة</h2>
           <div className="grid grid-cols-4 gap-4">
