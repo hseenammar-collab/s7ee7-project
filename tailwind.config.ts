@@ -101,9 +101,10 @@ const config: Config = {
           '50%': { opacity: '0.6' },
           '100%': { opacity: '0', transform: 'translateY(-20px)' }
         },
+        // Optimized glow-pulse - uses opacity and transform instead of box-shadow
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(212, 175, 55, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(212, 175, 55, 0.6)' }
+          '0%, 100%': { opacity: '0.3', transform: 'scale(1)' },
+          '50%': { opacity: '0.6', transform: 'scale(1.02)' }
         },
         'shimmer': {
           '0%': { backgroundPosition: '-200% 0' },

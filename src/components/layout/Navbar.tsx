@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, User, LogOut, BookOpen, Settings, Search, LayoutDashboard } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -30,24 +29,23 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-
+  const [mounted, setMounted] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
+    setMounted(true)
+    
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20)
     }
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
-
       if (user) {
         const { data } = await supabase
           .from('profiles')
@@ -57,12 +55,9 @@ export default function Navbar() {
         setProfile(data)
       }
     }
-
     getUser()
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
         const { data } = await supabase
@@ -85,14 +80,13 @@ export default function Navbar() {
   }
 
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled
           ? 'bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/10'
           : 'bg-transparent'
       }`}
+      style={{ transform: mounted ? 'translateY(0)' : 'translateY(-100%)' }}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
@@ -118,10 +112,7 @@ export default function Navbar() {
               >
                 {link.label}
                 {pathname === link.href && (
-                  <motion.div
-                    layoutId="navbar-indicator"
-                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-indigo-500"
-                  />
+                  <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-indigo-500" />
                 )}
               </Link>
             ))}
@@ -130,13 +121,14 @@ export default function Navbar() {
           {/* Actions */}
           <div className="hidden lg:flex items-center gap-4">
             {/* Search Button */}
-            <Link href="/courses">
+            <Link href="/courses" aria-label="البحث عن كورسات">
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-gray-400 hover:text-white hover:bg-white/10"
               >
                 <Search className="h-5 w-5" />
+                <span className="sr-only">البحث</span>
               </Button>
             </Link>
 
@@ -154,7 +146,10 @@ export default function Navbar() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <button 
+                      className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                      aria-label="قائمة المستخدم"
+                    >
                       <Avatar className="h-9 w-9 ring-2 ring-purple-500/50">
                         <AvatarImage src={profile?.avatar_url || ''} />
                         <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
@@ -239,79 +234,79 @@ export default function Navbar() {
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"
+            aria-label={isOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+            aria-expanded={isOpen}
+            aria-controls="mobile-menu"
           >
             {isOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {/* Mobile Navigation */}
-        <AnimatePresence>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden py-4 border-t border-white/10"
-            >
-              <div className="flex flex-col gap-2">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setIsOpen(false)}
-                    className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                      pathname === link.href
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-
-                <div className="border-t border-white/10 mt-2 pt-4 px-4">
-                  {user ? (
-                    <div className="space-y-2">
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setIsOpen(false)}
-                        className="block w-full"
-                      >
-                        <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600">
-                          لوحة التحكم
-                        </Button>
-                      </Link>
+        <div
+          id="mobile-menu"
+          className={`lg:hidden overflow-hidden transition-all duration-300 ${
+            isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="py-4 border-t border-white/10">
+            <div className="flex flex-col gap-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
+                    pathname === link.href
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="border-t border-white/10 mt-2 pt-4 px-4">
+                {user ? (
+                  <div className="space-y-2">
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setIsOpen(false)}
+                      className="block w-full"
+                    >
+                      <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600">
+                        لوحة التحكم
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      className="w-full border-white/20 text-gray-300 hover:bg-white/10"
+                      onClick={handleSignOut}
+                    >
+                      تسجيل الخروج
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Link href="/login" className="flex-1">
                       <Button
                         variant="outline"
                         className="w-full border-white/20 text-gray-300 hover:bg-white/10"
-                        onClick={handleSignOut}
                       >
-                        تسجيل الخروج
+                        تسجيل الدخول
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Link href="/login" className="flex-1">
-                        <Button
-                          variant="outline"
-                          className="w-full border-white/20 text-gray-300 hover:bg-white/10"
-                        >
-                          تسجيل الدخول
-                        </Button>
-                      </Link>
-                      <Link href="/register" className="flex-1">
-                        <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600">
-                          إنشاء حساب
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </div>
+                    </Link>
+                    <Link href="/register" className="flex-1">
+                      <Button className="w-full bg-gradient-to-r from-purple-500 to-indigo-600">
+                        إنشاء حساب
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
+        </div>
       </div>
-    </motion.nav>
+    </nav>
   )
 }

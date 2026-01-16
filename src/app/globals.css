@@ -81,6 +81,12 @@ html {
   .bg-gradient-secondary {
     background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
   }
+
+  /* Optimized glow pulse - uses opacity instead of box-shadow for better performance */
+  .animate-glow-pulse {
+    animation: glowPulseOptimized 2s ease-in-out infinite;
+    will-change: opacity;
+  }
 }
 
 @keyframes fadeIn {
@@ -114,6 +120,18 @@ html {
   }
 }
 
+/* Optimized glow pulse animation - GPU accelerated */
+@keyframes glowPulseOptimized {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.02);
+  }
+}
+
 /* Card hover effects */
 .card-hover {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
@@ -131,7 +149,7 @@ html {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Glow effects */
+/* Glow effects - static, no animation */
 .glow-purple {
   box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
 }
@@ -163,4 +181,19 @@ input[type="number"] {
 /* RTL adjustments */
 [dir="rtl"] .rtl-flip {
   transform: scaleX(-1);
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  html {
+    scroll-behavior: auto;
+  }
 }
