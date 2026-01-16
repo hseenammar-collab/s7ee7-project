@@ -2,170 +2,153 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Eye, EyeOff, Loader2, Shield, Lock, Mail, Sparkles } from 'lucide-react'
-import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-
-const loginSchema = z.object({
-  email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
-  password: z.string().min(1, 'كلمة المرور مطلوبة').min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
-})
-
-type LoginFormData = z.infer<typeof loginSchema>
+import { toast } from 'sonner'
+import { Loader2, Lock, Mail, ShieldAlert } from 'lucide-react'
+import Link from 'next/link'
 
 export default function AdminLoginPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-  })
-
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
 
     try {
       const supabase = createClient()
-      
+
+      // 1. تسجيل الدخول
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email.trim().toLowerCase(),
-        password: data.password,
+        email,
+        password,
       })
 
       if (authError) {
-        toast.error('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-        setIsLoading(false)
+        setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
+        setLoading(false)
         return
       }
 
       if (!authData.user) {
-        toast.error('فشل تسجيل الدخول')
-        setIsLoading(false)
+        setError('حدث خطأ في تسجيل الدخول')
+        setLoading(false)
         return
       }
 
-      // Check if admin
-      const { data: profile } = await supabase
+      // 2. التحقق من صلاحية الأدمن
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', authData.user.id)
         .single()
 
-      if (profile?.role !== 'admin') {
+      if (profileError || profile?.role !== 'admin') {
+        // ليس أدمن - تسجيل خروج فوري
         await supabase.auth.signOut()
-        toast.error('ليس لديك صلاحية الوصول للوحة التحكم')
-        setIsLoading(false)
+        setError('⛔ ليس لديك صلاحية للوصول للوحة التحكم')
+        setLoading(false)
         return
       }
 
+      // 3. أدمن صحيح - تحويل للوحة التحكم
       toast.success('مرحباً بك في لوحة التحكم!')
-      window.location.href = '/admin'
+      window.location.replace('/admin')
 
-    } catch (error) {
-      console.error('Login error:', error)
-      toast.error('حدث خطأ غير متوقع')
-      setIsLoading(false)
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('حدث خطأ غير متوقع')
+      setLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4" dir="rtl">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-md">
+      <div className="w-full max-w-md">
+        {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center gap-2 mb-4">
+            <span className="text-gray-400 text-sm">لوحة التحكم</span>
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <ShieldAlert className="w-5 h-5 text-white" />
             </div>
-            <span className="text-2xl font-black text-white">S7EE7</span>
-          </Link>
-          
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-full mb-6">
-            <Shield className="w-4 h-4" />
-            <span className="text-sm font-medium">لوحة التحكم</span>
+            <span className="text-2xl font-bold text-white">S7EE7</span>
           </div>
-          
-          <h1 className="text-2xl font-bold text-white mb-2">تسجيل دخول المدير</h1>
-          <p className="text-gray-400">أدخل بياناتك للوصول للوحة التحكم</p>
+          <h1 className="text-xl font-bold text-white">تسجيل دخول المدير</h1>
+          <p className="text-gray-400 text-sm mt-2">أدخل بياناتك للوصول للوحة التحكم</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">البريد الإلكتروني</label>
+        {/* Form */}
+        <form onSubmit={handleLogin} className="bg-[#111118] border border-white/10 rounded-2xl p-6 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          {/* Email */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">البريد الإلكتروني</label>
             <div className="relative">
+              <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
                 type="email"
-                autoComplete="email"
-                placeholder="admin@s7ee7.com"
-                disabled={isLoading}
-                className={`w-full h-12 px-4 pr-11 bg-white/5 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 ${errors.email ? 'border-red-500' : 'border-white/10'}`}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@example.com"
+                required
+                disabled={loading}
+                className="w-full h-12 pr-11 pl-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 disabled:opacity-50"
                 dir="ltr"
-                {...register('email')}
               />
-              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
             </div>
-            {errors.email && <p className="text-sm text-red-400">{errors.email.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">كلمة المرور</label>
+          {/* Password */}
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">كلمة المرور</label>
             <div className="relative">
+              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
               <input
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                disabled={isLoading}
-                className={`w-full h-12 px-4 pr-11 pl-11 bg-white/5 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 ${errors.password ? 'border-red-500' : 'border-white/10'}`}
+                required
+                disabled={loading}
+                className="w-full h-12 pr-11 pl-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 disabled:opacity-50"
                 dir="ltr"
-                {...register('password')}
               />
-              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
             </div>
-            {errors.password && <p className="text-sm text-red-400">{errors.password.message}</p>}
           </div>
 
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full h-12 bg-gradient-to-l from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white font-bold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-12 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            {isLoading ? (
+            {loading ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" />
                 <span>جاري التحقق...</span>
               </>
             ) : (
-              <>
-                <Shield className="w-5 h-5" />
-                <span>دخول لوحة التحكم</span>
-              </>
+              <span>تسجيل الدخول</span>
             )}
           </button>
-        </form>
 
-        <p className="text-center text-gray-500 mt-8">
-          <Link href="/" className="text-gray-400 hover:text-white">العودة للموقع الرئيسي</Link>
-        </p>
+          {/* Back to site */}
+          <div className="text-center">
+            <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors">
+              العودة للموقع الرئيسي
+            </Link>
+          </div>
+        </form>
       </div>
     </div>
   )
