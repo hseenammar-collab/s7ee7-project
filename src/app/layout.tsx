@@ -72,9 +72,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: 'your-google-verification-code',
-  },
 }
 
 export default function RootLayout({
@@ -96,7 +93,7 @@ export default function RootLayout({
           <AuthProvider>
             <Analytics />
             {children}
-            <WhatsAppButton phoneNumber="9647700000000" />
+            <WhatsAppButton phoneNumber="9647818812713" />
             <Toaster
               position="top-center"
               richColors
