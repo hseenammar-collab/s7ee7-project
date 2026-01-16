@@ -1,18 +1,19 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next'
-import { Cairo } from 'next/font/google'
+import { Noto_Kufi_Arabic } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import QueryProvider from '@/components/providers/QueryProvider'
 import { AuthProvider } from '@/contexts/AuthContext'
-import SecurityProvider from '@/components/providers/SecurityProvider'
 import Analytics from '@/components/Analytics'
 import { OrganizationSchema, WebsiteSchema } from '@/components/StructuredData'
 import WhatsAppButton from '@/components/WhatsAppButton'
 
-const cairo = Cairo({ 
-  subsets: ['arabic', 'latin'],
-  variable: '--font-cairo',
+const notoKufi = Noto_Kufi_Arabic({ 
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-noto-kufi',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -88,12 +89,11 @@ export default function RootLayout({
         <WebsiteSchema />
       </head>
       <body
-        className={`${cairo.variable} font-cairo antialiased`}
+        className={`${notoKufi.variable} font-sans antialiased`}
         style={{ backgroundColor: '#0a0a0f', color: 'white' }}
       >
         <QueryProvider>
           <AuthProvider>
-            {/* SecurityProvider معطل مؤقتاً - سبب مشكلة "جاري التحقق" */}
             <Analytics />
             {children}
             <WhatsAppButton phoneNumber="9647700000000" />
@@ -103,7 +103,7 @@ export default function RootLayout({
               closeButton
               toastOptions={{
                 style: {
-                  fontFamily: 'var(--font-cairo)',
+                  fontFamily: 'var(--font-noto-kufi)',
                 },
               }}
             />
