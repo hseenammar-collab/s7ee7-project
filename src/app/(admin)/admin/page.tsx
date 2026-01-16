@@ -19,28 +19,34 @@ import {
 } from 'lucide-react'
 
 export default function AdminDashboard() {
-  const [status, setStatus] = useState<'loading' | 'authorized' | 'unauthorized'>('loading')
+  const [status, setStatus] = useState<'loading' | 'authorized' | 'redirecting'>('loading')
   const [stats, setStats] = useState({ users: 0, courses: 0, orders: 0, revenue: 0 })
 
   useEffect(() => {
-    const init = async () => {
+    const checkAuth = async () => {
       try {
         const supabase = createClient()
-        const { data: { user } } = await supabase.auth.getUser()
         
-        if (!user) {
-          window.location.href = '/admin/login'
+        // Get session
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!session?.user) {
+          setStatus('redirecting')
+          window.location.replace('/admin/login')
           return
         }
 
-        const { data: profile } = await supabase
+        // Check admin role
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', session.user.id)
           .single()
 
-        if (profile?.role !== 'admin') {
-          window.location.href = '/'
+        if (error || profile?.role !== 'admin') {
+          setStatus('redirecting')
+          await supabase.auth.signOut()
+          window.location.replace('/admin/login')
           return
         }
 
@@ -62,24 +68,31 @@ export default function AdminDashboard() {
 
         setStatus('authorized')
       } catch (error) {
-        console.error('Init error:', error)
-        window.location.href = '/admin/login'
+        console.error('Auth error:', error)
+        setStatus('redirecting')
+        window.location.replace('/admin/login')
       }
     }
 
-    init()
+    checkAuth()
   }, [])
 
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    window.location.href = '/admin/login'
+    window.location.replace('/admin/login')
   }
 
-  if (status === 'loading') {
+  // Show loading while checking auth
+  if (status === 'loading' || status === 'redirecting') {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">
+            {status === 'loading' ? 'جاري التحقق...' : 'جاري التحويل...'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -89,7 +102,6 @@ export default function AdminDashboard() {
     { href: '/admin/users', icon: Users, label: 'المستخدمين' },
     { href: '/admin/courses', icon: BookOpen, label: 'الكورسات' },
     { href: '/admin/orders', icon: CreditCard, label: 'الطلبات' },
-    { href: '/admin/payments', icon: CreditCard, label: 'المدفوعات' },
     { href: '/admin/coupons', icon: Ticket, label: 'الكوبونات' },
     { href: '/admin/reviews', icon: Star, label: 'التقييمات' },
     { href: '/admin/reports', icon: FileText, label: 'التقارير' },
@@ -140,39 +152,48 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-6 mb-8">
-          {[
-            { label: 'المستخدمين', value: stats.users, icon: Users, color: 'blue' },
-            { label: 'الكورسات', value: stats.courses, icon: BookOpen, color: 'green' },
-            { label: 'الطلبات', value: stats.orders, icon: CreditCard, color: 'purple' },
-            { label: 'الإيرادات', value: `${stats.revenue.toLocaleString()} د.ع`, icon: TrendingUp, color: 'orange' },
-          ].map((stat, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-6">
-              <stat.icon className={`w-8 h-8 text-${stat.color}-400 mb-4`} />
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="text-gray-400 text-sm">{stat.label}</p>
-            </div>
-          ))}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <Users className="w-8 h-8 text-blue-400 mb-4" />
+            <p className="text-2xl font-bold text-white">{stats.users}</p>
+            <p className="text-gray-400 text-sm">المستخدمين</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <BookOpen className="w-8 h-8 text-green-400 mb-4" />
+            <p className="text-2xl font-bold text-white">{stats.courses}</p>
+            <p className="text-gray-400 text-sm">الكورسات</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <CreditCard className="w-8 h-8 text-purple-400 mb-4" />
+            <p className="text-2xl font-bold text-white">{stats.orders}</p>
+            <p className="text-gray-400 text-sm">الطلبات</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+            <TrendingUp className="w-8 h-8 text-orange-400 mb-4" />
+            <p className="text-2xl font-bold text-white">{stats.revenue.toLocaleString()} د.ع</p>
+            <p className="text-gray-400 text-sm">الإيرادات</p>
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
           <h2 className="text-lg font-semibold text-white mb-4">إجراءات سريعة</h2>
           <div className="grid grid-cols-4 gap-4">
-            {[
-              { href: '/admin/courses', icon: BookOpen, label: 'إضافة كورس', color: 'green' },
-              { href: '/admin/users', icon: Users, label: 'إدارة المستخدمين', color: 'blue' },
-              { href: '/admin/orders', icon: CreditCard, label: 'الطلبات الجديدة', color: 'purple' },
-              { href: '/admin/coupons', icon: Ticket, label: 'إضافة كوبون', color: 'orange' },
-            ].map((item, i) => (
-              <Link
-                key={i}
-                href={item.href}
-                className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10"
-              >
-                <item.icon className={`w-8 h-8 text-${item.color}-400`} />
-                <span className="text-sm text-gray-300">{item.label}</span>
-              </Link>
-            ))}
+            <Link href="/admin/courses" className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10">
+              <BookOpen className="w-8 h-8 text-green-400" />
+              <span className="text-sm text-gray-300">إضافة كورس</span>
+            </Link>
+            <Link href="/admin/users" className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10">
+              <Users className="w-8 h-8 text-blue-400" />
+              <span className="text-sm text-gray-300">إدارة المستخدمين</span>
+            </Link>
+            <Link href="/admin/orders" className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10">
+              <CreditCard className="w-8 h-8 text-purple-400" />
+              <span className="text-sm text-gray-300">الطلبات الجديدة</span>
+            </Link>
+            <Link href="/admin/coupons" className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10">
+              <Ticket className="w-8 h-8 text-orange-400" />
+              <span className="text-sm text-gray-300">إضافة كوبون</span>
+            </Link>
           </div>
         </div>
       </main>
