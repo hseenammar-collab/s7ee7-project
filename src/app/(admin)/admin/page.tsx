@@ -44,18 +44,20 @@ export default function AdminDashboard() {
           return
         }
 
-        // Load stats
+        // Load stats with correct column names
         const [usersRes, coursesRes, ordersRes] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('courses').select('id', { count: 'exact', head: true }),
-          supabase.from('orders').select('total_amount')
+          supabase.from('orders').select('final_amount_iqd, amount_iqd')
         ])
+
+        const revenue = ordersRes.data?.reduce((sum, o) => sum + (o.final_amount_iqd || o.amount_iqd || 0), 0) || 0
 
         setStats({
           users: usersRes.count || 0,
           courses: coursesRes.count || 0,
           orders: ordersRes.data?.length || 0,
-          revenue: ordersRes.data?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
+          revenue
         })
 
         setStatus('authorized')

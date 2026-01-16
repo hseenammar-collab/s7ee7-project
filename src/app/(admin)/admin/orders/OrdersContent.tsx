@@ -25,12 +25,13 @@ interface Order {
   id: string
   user_id: string
   course_id: string
-  amount: number
+  amount_iqd: number
+  final_amount_iqd: number
   status: 'pending' | 'approved' | 'rejected' | 'completed'
   payment_method: string
-  payment_proof_url?: string
-  teachable_coupon?: string
-  notes?: string
+  receipt_url?: string
+  coupon_code?: string
+  rejection_reason?: string
   created_at: string
   updated_at: string
   profiles?: {
@@ -124,8 +125,8 @@ export default function OrdersContent() {
         .from('orders')
         .update({
           status: 'approved',
-          teachable_coupon: coupon.trim(),
           updated_at: new Date().toISOString(),
+          approved_at: new Date().toISOString(),
         })
         .eq('id', orderId)
 
@@ -147,7 +148,7 @@ export default function OrdersContent() {
       
       setOrders(prev => prev.map(o => 
         o.id === orderId 
-          ? { ...o, status: 'approved', teachable_coupon: coupon.trim() }
+          ? { ...o, status: 'approved' }
           : o
       ))
       
@@ -171,7 +172,7 @@ export default function OrdersContent() {
         .from('orders')
         .update({
           status: 'rejected',
-          notes: reason || 'تم الرفض من قبل الإدارة',
+          rejection_reason: reason || 'تم الرفض من قبل الإدارة',
           updated_at: new Date().toISOString(),
         })
         .eq('id', orderId)
@@ -195,7 +196,7 @@ export default function OrdersContent() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ar-IQ').format(amount) + ' د.ع'
+    return new Intl.NumberFormat('ar-IQ').format(amount || 0) + ' د.ع'
   }
 
   const formatDate = (date: string) => {
@@ -305,16 +306,16 @@ export default function OrdersContent() {
                             {order.profiles?.full_name?.charAt(0) || '?'}
                           </div>
                           <div>
-                            <p className="font-medium">{order.profiles?.full_name}</p>
-                            <p className="text-sm text-gray-400">{order.profiles?.email}</p>
+                            <p className="font-medium">{order.profiles?.full_name || 'غير معروف'}</p>
+                            <p className="text-sm text-gray-400">{order.profiles?.email || '-'}</p>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                        <p className="font-medium truncate max-w-[200px]">{order.courses?.title}</p>
+                        <p className="font-medium truncate max-w-[200px]">{order.courses?.title || 'غير معروف'}</p>
                       </td>
                       <td className="px-4 py-4">
-                        <p className="font-bold text-cyan-400">{formatCurrency(order.amount)}</p>
+                        <p className="font-bold text-cyan-400">{formatCurrency(order.final_amount_iqd || order.amount_iqd)}</p>
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm ${status.bg} ${status.text}`}>
@@ -408,15 +409,15 @@ export default function OrdersContent() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">الاسم:</span>
-                    <span>{selectedOrder.profiles?.full_name}</span>
+                    <span>{selectedOrder.profiles?.full_name || 'غير معروف'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">الإيميل:</span>
-                    <span dir="ltr">{selectedOrder.profiles?.email}</span>
+                    <span dir="ltr">{selectedOrder.profiles?.email || '-'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">الهاتف:</span>
-                    <span dir="ltr">{selectedOrder.profiles?.phone}</span>
+                    <span dir="ltr">{selectedOrder.profiles?.phone || '-'}</span>
                   </div>
                 </div>
               </div>
@@ -434,19 +435,19 @@ export default function OrdersContent() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{selectedOrder.courses?.title}</p>
+                    <p className="font-medium">{selectedOrder.courses?.title || 'غير معروف'}</p>
                     <p className="text-2xl font-bold text-cyan-400 mt-1">
-                      {formatCurrency(selectedOrder.amount)}
+                      {formatCurrency(selectedOrder.final_amount_iqd || selectedOrder.amount_iqd)}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {selectedOrder.payment_proof_url && (
+              {selectedOrder.receipt_url && (
                 <div className="bg-white/5 rounded-xl p-4">
                   <h3 className="font-medium mb-3">إثبات الدفع</h3>
                   <a
-                    href={selectedOrder.payment_proof_url}
+                    href={selectedOrder.receipt_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-cyan-400 hover:text-cyan-300"
@@ -454,26 +455,6 @@ export default function OrdersContent() {
                     <ExternalLink className="w-4 h-4" />
                     <span>عرض الصورة</span>
                   </a>
-                </div>
-              )}
-
-              {selectedOrder.teachable_coupon && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                  <h3 className="font-medium text-green-400 mb-3 flex items-center gap-2">
-                    <Ticket className="w-5 h-5" />
-                    كوبون Teachable
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-black/30 px-3 py-2 rounded-lg font-mono text-sm">
-                      {selectedOrder.teachable_coupon}
-                    </code>
-                    <button
-                      onClick={() => copyToClipboard(selectedOrder.teachable_coupon!)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
               )}
 
