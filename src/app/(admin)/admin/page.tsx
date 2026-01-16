@@ -1,204 +1,233 @@
-// src/app/(admin)/admin/login/page.tsx
+// src/app/(admin)/admin/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Eye, EyeOff, Loader2, Shield, Lock, Mail, Sparkles } from 'lucide-react'
-import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
+import { 
+  Users, 
+  BookOpen, 
+  CreditCard, 
+  TrendingUp,
+  Settings,
+  LogOut,
+  Loader2,
+  LayoutDashboard,
+  Ticket,
+  FileText,
+  Star
+} from 'lucide-react'
 
-const loginSchema = z.object({
-  email: z.string().min(1, 'البريد الإلكتروني مطلوب').email('البريد الإلكتروني غير صحيح'),
-  password: z.string().min(1, 'كلمة المرور مطلوبة').min(6, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل'),
-})
+interface Stats {
+  totalUsers: number
+  totalCourses: number
+  totalOrders: number
+  totalRevenue: number
+}
 
-type LoginFormData = z.infer<typeof loginSchema>
-
-export default function AdminLoginPage() {
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+export default function AdminDashboard() {
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    totalCourses: 0,
+    totalOrders: 0,
+    totalRevenue: 0
   })
 
-  const onSubmit = async (data: LoginFormData) => {
-    setIsLoading(true)
-
-    try {
-      // Use API route for proper cookie handling
-      const response = await fetch('/api/auth/admin-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        toast.error(result.error || 'حدث خطأ في تسجيل الدخول')
-        setIsLoading(false)
+  useEffect(() => {
+    const checkAdminAndLoadStats = async () => {
+      const supabase = createClient()
+      
+      // Check auth
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        window.location.href = '/admin/login'
         return
       }
 
-      toast.success('مرحباً بك في لوحة التحكم!')
-      
-      // Redirect to admin dashboard
-      setTimeout(() => {
-        window.location.href = '/admin'
-      }, 300)
+      // Check admin role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
 
-    } catch (error) {
-      toast.error('حدث خطأ غير متوقع')
+      if (profile?.role !== 'admin') {
+        window.location.href = '/'
+        return
+      }
+
+      setIsAdmin(true)
+
+      // Load stats
+      try {
+        const [usersRes, coursesRes, ordersRes] = await Promise.all([
+          supabase.from('profiles').select('id', { count: 'exact', head: true }),
+          supabase.from('courses').select('id', { count: 'exact', head: true }),
+          supabase.from('orders').select('id, total_amount', { count: 'exact' })
+        ])
+
+        const totalRevenue = ordersRes.data?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
+
+        setStats({
+          totalUsers: usersRes.count || 0,
+          totalCourses: coursesRes.count || 0,
+          totalOrders: ordersRes.count || 0,
+          totalRevenue
+        })
+      } catch (error) {
+        console.error('Error loading stats:', error)
+      }
+
       setIsLoading(false)
     }
+
+    checkAdminAndLoadStats()
+  }, [])
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/admin/login'
   }
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4" dir="rtl">
-      {/* Background Effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl" />
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400">جاري التحميل...</p>
+        </div>
       </div>
+    )
+  }
 
-      <div className="relative z-10 w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-black text-white">S7EE7</span>
-          </Link>
-          
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 rounded-full mb-6">
-            <Shield className="w-4 h-4" />
-            <span className="text-sm font-medium">لوحة التحكم</span>
+  if (!isAdmin) {
+    return null
+  }
+
+  const menuItems = [
+    { href: '/admin', icon: LayoutDashboard, label: 'الرئيسية', active: true },
+    { href: '/admin/users', icon: Users, label: 'المستخدمين' },
+    { href: '/admin/courses', icon: BookOpen, label: 'الكورسات' },
+    { href: '/admin/orders', icon: CreditCard, label: 'الطلبات' },
+    { href: '/admin/payments', icon: CreditCard, label: 'المدفوعات' },
+    { href: '/admin/coupons', icon: Ticket, label: 'الكوبونات' },
+    { href: '/admin/reviews', icon: Star, label: 'التقييمات' },
+    { href: '/admin/reports', icon: FileText, label: 'التقارير' },
+  ]
+
+  const statCards = [
+    { label: 'المستخدمين', value: stats.totalUsers, icon: Users, color: 'from-blue-500 to-blue-600' },
+    { label: 'الكورسات', value: stats.totalCourses, icon: BookOpen, color: 'from-green-500 to-green-600' },
+    { label: 'الطلبات', value: stats.totalOrders, icon: CreditCard, color: 'from-purple-500 to-purple-600' },
+    { label: 'الإيرادات', value: `${stats.totalRevenue.toLocaleString()} د.ع`, icon: TrendingUp, color: 'from-orange-500 to-orange-600' },
+  ]
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0f]" dir="rtl">
+      {/* Sidebar */}
+      <aside className="fixed right-0 top-0 h-full w-64 bg-[#111] border-l border-white/10 p-4">
+        <div className="flex items-center gap-3 mb-8 px-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <Settings className="w-5 h-5 text-white" />
           </div>
-          
-          <h1 className="text-2xl font-bold text-white mb-2">تسجيل دخول المدير</h1>
-          <p className="text-gray-400">أدخل بياناتك للوصول للوحة التحكم</p>
+          <div>
+            <h1 className="font-bold text-white">S7EE7</h1>
+            <p className="text-xs text-gray-500">لوحة التحكم</p>
+          </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">
-              البريد الإلكتروني
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                autoComplete="email"
-                placeholder="admin@s7ee7.com"
-                disabled={isLoading}
-                className={`
-                  w-full h-12 px-4 pr-11
-                  bg-white/5 border rounded-xl
-                  text-white placeholder-gray-500
-                  transition-all duration-200
-                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
-                  disabled:opacity-50
-                  ${errors.email ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
-                `}
-                dir="ltr"
-                {...register('email')}
-              />
-              <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-            </div>
-            {errors.email && (
-              <p className="text-sm text-red-400">{errors.email.message}</p>
-            )}
-          </div>
+        <nav className="space-y-1">
+          {menuItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                item.active 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
 
-          {/* Password */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-300">
-              كلمة المرور
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                disabled={isLoading}
-                className={`
-                  w-full h-12 px-4 pr-11 pl-11
-                  bg-white/5 border rounded-xl
-                  text-white placeholder-gray-500
-                  transition-all duration-200
-                  focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500
-                  disabled:opacity-50
-                  ${errors.password ? 'border-red-500' : 'border-white/10 hover:border-white/20'}
-                `}
-                dir="ltr"
-                {...register('password')}
-              />
-              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                tabIndex={-1}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-sm text-red-400">{errors.password.message}</p>
-            )}
-          </div>
-
-          {/* Submit */}
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="
-              w-full h-12 
-              bg-gradient-to-l from-purple-500 to-purple-600 
-              hover:from-purple-400 hover:to-purple-500
-              text-white font-bold text-base
-              rounded-xl
-              transition-all duration-200
-              disabled:opacity-50
-              flex items-center justify-center gap-2
-              shadow-lg shadow-purple-500/20
-            "
+        <div className="absolute bottom-4 right-4 left-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-red-500/10 w-full transition-colors"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>جاري التحقق...</span>
-              </>
-            ) : (
-              <>
-                <Shield className="w-5 h-5" />
-                <span>دخول لوحة التحكم</span>
-              </>
-            )}
+            <LogOut className="w-5 h-5" />
+            <span>تسجيل الخروج</span>
           </button>
-        </form>
+        </div>
+      </aside>
 
-        {/* Back to site */}
-        <p className="text-center text-gray-500 mt-8">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors">
-            العودة للموقع الرئيسي
-          </Link>
-        </p>
-      </div>
+      {/* Main Content */}
+      <main className="mr-64 p-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white">مرحباً بك في لوحة التحكم</h1>
+          <p className="text-gray-400">إدارة منصة S7EE7 التعليمية</p>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {statCards.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-white/5 border border-white/10 rounded-xl p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center`}>
+                  <stat.icon className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-white mb-1">{stat.value}</p>
+              <p className="text-gray-400 text-sm">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">إجراءات سريعة</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Link
+              href="/admin/courses"
+              className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <BookOpen className="w-8 h-8 text-green-400" />
+              <span className="text-sm text-gray-300">إضافة كورس</span>
+            </Link>
+            <Link
+              href="/admin/users"
+              className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <Users className="w-8 h-8 text-blue-400" />
+              <span className="text-sm text-gray-300">إدارة المستخدمين</span>
+            </Link>
+            <Link
+              href="/admin/orders"
+              className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <CreditCard className="w-8 h-8 text-purple-400" />
+              <span className="text-sm text-gray-300">الطلبات الجديدة</span>
+            </Link>
+            <Link
+              href="/admin/coupons"
+              className="flex flex-col items-center gap-2 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <Ticket className="w-8 h-8 text-orange-400" />
+              <span className="text-sm text-gray-300">إضافة كوبون</span>
+            </Link>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
