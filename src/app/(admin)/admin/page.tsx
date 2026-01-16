@@ -21,18 +21,70 @@ import {
 export default function AdminDashboard() {
   const [status, setStatus] = useState<'loading' | 'authorized' | 'unauthorized'>('loading')
   const [stats, setStats] = useState({ users: 0, courses: 0, orders: 0, revenue: 0 })
+  const [debugInfo, setDebugInfo] = useState('')
 
   useEffect(() => {
-    const supabase = createClient()
+    const checkAuth = async () => {
+      try {
+        const supabase = createClient()
+        
+        console.log('1. Getting session...')
+        setDebugInfo('Getting session...')
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        console.log('2. Session result:', { 
+          hasSession: !!session, 
+          userId: session?.user?.id,
+          email: session?.user?.email,
+          error: sessionError 
+        })
 
-    const checkAdmin = async (userId: string) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single()
+        if (!session?.user) {
+          console.log('3. No session - unauthorized')
+          setDebugInfo('No session found')
+          setStatus('unauthorized')
+          return
+        }
 
-      if (profile?.role === 'admin') {
+        setDebugInfo(`Session found: ${session.user.email}`)
+        console.log('3. Checking profile for user:', session.user.id)
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, email')
+          .eq('id', session.user.id)
+          .single()
+
+        console.log('4. Profile result:', { profile, error: profileError })
+
+        if (profileError) {
+          console.log('5. Profile error:', profileError.message)
+          setDebugInfo(`Profile error: ${profileError.message}`)
+          setStatus('unauthorized')
+          return
+        }
+
+        if (!profile) {
+          console.log('5. No profile found')
+          setDebugInfo('No profile found')
+          setStatus('unauthorized')
+          return
+        }
+
+        console.log('5. Profile role:', profile.role)
+        setDebugInfo(`Profile found: ${profile.email}, role: ${profile.role}`)
+
+        if (profile.role !== 'admin') {
+          console.log('6. Not admin')
+          setDebugInfo(`Not admin (role: ${profile.role})`)
+          setStatus('unauthorized')
+          return
+        }
+
+        console.log('6. Admin verified! Loading stats...')
+        setDebugInfo('Admin verified! Loading stats...')
+
         // Load stats
         const [usersRes, coursesRes, ordersRes] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
@@ -47,33 +99,17 @@ export default function AdminDashboard() {
           revenue: ordersRes.data?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
         })
 
+        console.log('7. Stats loaded, setting authorized')
         setStatus('authorized')
-      } else {
+        
+      } catch (error: any) {
+        console.error('Auth error:', error)
+        setDebugInfo(`Error: ${error.message}`)
         setStatus('unauthorized')
       }
     }
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event, 'User:', session?.user?.email)
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        await checkAdmin(session.user.id)
-      } else if (event === 'SIGNED_OUT' || !session) {
-        setStatus('unauthorized')
-      }
-    })
-
-    // Also check current session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        checkAdmin(session.user.id)
-      } else {
-        setStatus('unauthorized')
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    checkAuth()
   }, [])
 
   const handleLogout = async () => {
@@ -88,6 +124,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-purple-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-400">جاري التحقق من الصلاحيات...</p>
+          <p className="text-gray-500 text-xs mt-2 font-mono">{debugInfo}</p>
         </div>
       </div>
     )
@@ -101,7 +138,8 @@ export default function AdminDashboard() {
             <Settings className="w-8 h-8 text-red-400" />
           </div>
           <h1 className="text-xl font-bold text-white mb-2">غير مصرح</h1>
-          <p className="text-gray-400 mb-4">يرجى تسجيل الدخول كمدير</p>
+          <p className="text-gray-400 mb-2">يرجى تسجيل الدخول كمدير</p>
+          <p className="text-red-400 text-xs mb-4 font-mono bg-red-500/10 p-2 rounded">{debugInfo}</p>
           <Link 
             href="/admin/login"
             className="inline-block px-6 py-3 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-xl transition-colors"
